@@ -16,4 +16,4 @@ app.add_middleware(
 
 @app.get("/healthz")
 async def root():
-    return {"message": "SimuTrack API"}
+    return {"message": "Graduation-app is online"}
