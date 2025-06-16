@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 app = FastAPI()
 
@@ -14,6 +15,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/healthz")
+@app.get("/")
 async def root():
-    return {"message": "Graduation-app is online"}
+    return RedirectResponse(url="/healthz")
+
+@app.get("/healthz")
+async def healthz():
+    return {"message": "Graduation-app is online", "status": "OK"}
