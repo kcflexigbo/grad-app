@@ -2,3 +2,11 @@ fastapi
 supabase
 python-dotenv
 uvicorn
+gunicorn
+psycopg2-binary
+sqlalchemy
+passlib
+email-validator
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
