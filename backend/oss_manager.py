@@ -1,0 +1,59 @@
+import os
+import boto3
+from fastapi import UploadFile
+from dotenv import load_dotenv
+import uuid
+from botocore.client import Config
+
+load_dotenv(dotenv_path="../.env")
+
+# Load credentials from environment variables
+OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID")
+OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET")
+OSS_ENDPOINT = os.getenv("OSS_ENDPOINT")
+OSS_BUCKET_NAME = os.getenv("OSS_BUCKET_NAME")
+
+if not all([OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_ENDPOINT, OSS_BUCKET_NAME]):
+    raise ValueError("One or more OSS environment variables are not set.")
+
+s3_config = Config(
+    s3={'addressing_style': 'virtual'}, # Use virtual-hosted style
+    signature_version='s3'            # Use the latest signature version
+)
+
+# Initialize the S3 client for Alibaba Cloud OSS
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=OSS_ACCESS_KEY_ID,
+    aws_secret_access_key=OSS_ACCESS_KEY_SECRET,
+    endpoint_url=f'https://{OSS_ENDPOINT}',
+    config=s3_config
+)
+
+
+def upload_file_to_oss(file: UploadFile, object_name: str) -> str:
+    """
+    Uploads a file to an Alibaba Cloud OSS bucket and returns the public URL.
+
+    :param file: The file object from FastAPI's UploadFile.
+    :param object_name: The desired path and filename in the bucket.
+    :return: The public URL of the uploaded file.
+    """
+    try:
+        s3_client.upload_fileobj(
+            file.file,
+            OSS_BUCKET_NAME,
+            object_name,
+            ExtraArgs={
+                'ACL': 'public-read',
+                'ContentType': file.content_type
+            }
+        )
+    except Exception as e:
+        print(f"Error uploading to OSS: {e}")
+        raise e
+
+    # Construct the public URL
+    # Format: https://<BucketName>.<Endpoint>/<ObjectName>
+    public_url = f"https://{OSS_BUCKET_NAME}.{OSS_ENDPOINT}/{object_name}"
+    return public_url

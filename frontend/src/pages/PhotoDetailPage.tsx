@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Heart, MessageCircle, Download } from 'lucide-react';
 import apiService from '../api/apiService';
 import type {Image} from '../types/image'; // We will use a more detailed image type here
+import { FollowButton} from "../components/FollowButton.tsx";
 // We will use a more detailed image type here
 
 // Define a more detailed type for this page
@@ -87,9 +88,10 @@ export const PhotoDetailPage = () => {
                             <p className="text-sm text-gray-500">Posted on {new Date(image.created_at).toLocaleDateString()}</p>
                         </div>
                     </Link>
-                    <button className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700">
-                        Follow
-                    </button>
+                    {/*<button className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700">*/}
+                    {/*    Follow*/}
+                    {/*</button>*/}
+                    <FollowButton userIdToFollow={image.owner.id} initialIsFollowing={false}/>
                 </div>
 
                 <hr />

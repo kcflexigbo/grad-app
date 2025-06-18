@@ -1,10 +1,8 @@
+# C:/Users/kcfle/Documents/React Projects/grad-app/backend/schemas.py
+
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime
-
-# In a real project, these enums should be imported from your models file
-# to ensure they are the same. For this example, we'll redefine them.
-import enum
 from models import NotificationType, ReportStatus
 
 # --- Configuration ---
@@ -34,7 +32,7 @@ class ImageBase(BaseModel):
     caption: Optional[str] = None
 
 class ImageCreate(ImageBase):
-    pass # image_url will be set in the backend after upload
+    pass
 
 class ImageUpdate(ImageBase):
     pass
@@ -45,10 +43,10 @@ class Image(ImageBase, BaseSchema):
     image_url: str
     is_featured: bool
     created_at: datetime
-    owner: UserSimple  # Nested simple user schema
+    owner: UserSimple
     tags: List[Tag] = []
-    # like_count: Optional[int] # Can be added later
-
+    like_count: int = 0
+    comment_count: int = 0
 
 # --- Album Schemas ---
 
@@ -67,8 +65,9 @@ class Album(AlbumBase, BaseSchema):
     id: int
     owner_id: int
     owner: UserSimple
-    images: List['Image'] = [] # Forward reference to Image
+    images: List['Image'] = []
 
+# --- User Schemas ---
 
 class UserBase(BaseModel):
     username: str
@@ -90,10 +89,11 @@ class User(UserBase, BaseSchema):
     allow_downloads: bool
     created_at: datetime
     images: List[Image] = []
-    albums: List['Album'] = [] # Forward reference to Album
-    is_followed_by_current_user: bool = False  # Default to False
-    # followers_count: Optional[int]
-    # following_count: Optional[int]
+    albums: List['Album'] = []
+    # --- ADDED FIELDS ---
+    followers_count: int = 0
+    following_count: int = 0
+    is_followed_by_current_user: bool = False
 
 
 # --- Interaction Schemas (Likes, Comments, Follows) ---
@@ -110,18 +110,15 @@ class Comment(CommentBase, BaseSchema):
     created_at: datetime
     author: UserSimple
 
-
 class Like(BaseSchema):
     user_id: int
     image_id: int
     user: UserSimple
 
-
 class Follow(BaseSchema):
     follower_id: int
     following_id: int
     created_at: datetime
-
 
 # --- Notification and Report Schemas (Primarily for Reading) ---
 
@@ -137,7 +134,6 @@ class ReportBase(BaseModel):
     reason: Optional[str] = None
 
 class ReportCreate(ReportBase):
-    # User must report either an image or a comment
     reported_image_id: Optional[int] = None
     reported_comment_id: Optional[int] = None
 
@@ -149,7 +145,6 @@ class Report(ReportBase, BaseSchema):
     reported_comment_id: Optional[int] = None
     created_at: datetime
 
-
 # --- Authentication Schemas ---
 
 class Token(BaseModel):
@@ -159,11 +154,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-
 # --- Rebuild Models with Forward References ---
-# This is the modern replacement for update_forward_refs in Pydantic V2.
-# It resolves the string-based type hints ('Image', 'Album') after all
-# models have been defined in the module.
-
 Album.model_rebuild()
 User.model_rebuild()

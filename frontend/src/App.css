@@ -40,3 +40,16 @@
 .read-the-docs {
   color: #888;
 }
+
+body {
+  /* This is your PRD-defined off-white background color. It acts as a fallback. */
+  background-color: #F8F9FA;
+
+  /* The SVG background */
+  background-image: url("data:image/svg+xml,PASTE_YOUR_ENCODED_SVG_CODE_HERE");
+
+  /* Ensures the background covers the whole page and stays fixed during scroll */
+  background-size: cover;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}

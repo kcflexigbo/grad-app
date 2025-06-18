@@ -1,6 +1,10 @@
+# C:/Users/kcfle/Documents/React Projects/grad-app/backend/crud.py
+
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import schemas, security, models
 
+# --- User CRUD Functions ---
 
 def get_user(db: Session, user_id: int):
     """Retrieves a single user by their ID."""
@@ -53,9 +57,29 @@ def get_image(db: Session, image_id: int):
     return db.query(models.Image).filter(models.Image.id == image_id).first()
 
 
-def get_images(db: Session, skip: int = 0, limit: int = 20):
-    """Retrieves a paginated list of all images, newest first."""
-    return db.query(models.Image).order_by(models.Image.created_at.desc()).offset(skip).limit(limit).all()
+def get_images(db: Session, sort_by: str = "newest", skip: int = 0, limit: int = 20):
+    """
+    Retrieves a paginated list of all images, with different sorting options.
+    """
+    query = db.query(models.Image)
+
+    if sort_by == "popular":
+        # Join with likes, group by image, and order by the count of likes.
+        # outerjoin is important to include images with 0 likes.
+        query = (
+            query.outerjoin(models.Like)
+            .group_by(models.Image.id)
+            .order_by(func.count(models.Like.user_id).desc())
+        )
+    elif sort_by == "featured":
+        # Filter for featured images and order them by creation date.
+        query = query.filter(models.Image.is_featured == True).order_by(
+            models.Image.created_at.desc()
+        )
+    else:  # "newest" is the default
+        query = query.order_by(models.Image.created_at.desc())
+
+    return query.offset(skip).limit(limit).all()
 
 
 def create_image(db: Session, owner_id: int, image_url: str, caption: str):
@@ -86,22 +110,21 @@ def get_tag_by_name(db: Session, tag_name: str):
 
 
 def get_or_create_tags(db: Session, tags: list[str]) -> list[models.Tag]:
-    """
-    For a list of tag names, retrieves existing tags or creates new ones.
-    Returns a list of Tag model instances.
-    """
+    """For a list of tag names, retrieves existing tags or creates new ones."""
     tag_models = []
     tags_to_create = []
-    for tag_name in set(t.strip().lower() for t in tags if t.strip()):  # Use a set to handle duplicates
+    for tag_name in set(t.strip().lower() for t in tags if t.strip()):
         db_tag = get_tag_by_name(db, tag_name)
         if db_tag:
             tag_models.append(db_tag)
         else:
             tags_to_create.append(models.Tag(name=tag_name))
+
     if tags_to_create:
         db.add_all(tags_to_create)
         db.commit()
         tag_models.extend(tags_to_create)
+
     return tag_models
 
 
@@ -130,6 +153,11 @@ def get_comments_for_image(db: Session, image_id: int, skip: int = 0, limit: int
     """Retrieves comments for a specific image."""
     return (db.query(models.Comment).filter(models.Comment.image_id == image_id).
             order_by(models.Comment.created_at.asc()).offset(skip).limit(limit).all())
+
+
+def get_comment_count_for_image(db: Session, image_id: int) -> int:
+    """Gets the total number of comments for an image."""
+    return db.query(models.Comment).filter(models.Comment.image_id == image_id).count()
 
 
 # --- Like CRUD Functions ---
@@ -183,6 +211,16 @@ def delete_follow(db: Session, follow: models.Follow):
     db.delete(follow)
     db.commit()
     return True
+
+
+def get_follower_count_for_user(db: Session, user_id: int) -> int:
+    """Gets the number of followers a user has."""
+    return db.query(models.Follow).filter(models.Follow.following_id == user_id).count()
+
+
+def get_following_count_for_user(db: Session, user_id: int) -> int:
+    """Gets the number of users a user is following."""
+    return db.query(models.Follow).filter(models.Follow.follower_id == user_id).count()
 
 
 # --- Album CRUD Functions ---
