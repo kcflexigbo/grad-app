@@ -91,17 +91,17 @@ def get_or_create_tags(db: Session, tags: list[str]) -> list[models.Tag]:
     Returns a list of Tag model instances.
     """
     tag_models = []
-    for tag_name in tags:
-        tag_name = tag_name.strip().lower()
-        if not tag_name:
-            continue
+    tags_to_create = []
+    for tag_name in set(t.strip().lower() for t in tags if t.strip()):  # Use a set to handle duplicates
         db_tag = get_tag_by_name(db, tag_name)
-        if not db_tag:
-            db_tag = models.Tag(name=tag_name)
-            db.add(db_tag)
-            db.commit()
-            db.refresh(db_tag)
-        tag_models.append(db_tag)
+        if db_tag:
+            tag_models.append(db_tag)
+        else:
+            tags_to_create.append(models.Tag(name=tag_name))
+    if tags_to_create:
+        db.add_all(tags_to_create)
+        db.commit()
+        tag_models.extend(tags_to_create)
     return tag_models
 
 

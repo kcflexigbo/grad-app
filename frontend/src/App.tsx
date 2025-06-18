@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Outlet, Link } from 'react-rout
 // Providers and Hooks
 import { AuthProvider } from './context/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Core Layout Components
 import { Navbar } from './components/layout/Navbar';
@@ -27,16 +28,15 @@ const queryClient = new QueryClient();
  */
 const AppLayout = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const queryClient = useQueryClient();
 
     const handleUploadSuccess = () => {
         setIsUploadModalOpen(false);
-        // A simple way to ensure the gallery is up-to-date after an upload.
-        // For a more advanced UX, you could use a state management library to refetch data.
-        window.location.reload();
+        queryClient.invalidateQueries({ queryKey: ['images'] });
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
+        <div className="flex flex-col min-h-screen bg-gray-50 bg-noise font-sans">
             <Navbar onUploadClick={() => setIsUploadModalOpen(true)} />
 
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">

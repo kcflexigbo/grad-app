@@ -85,3 +85,23 @@ def get_current_user(token: str = Depends(oauth2_scheme),
     if user is None:
         raise credentials_exception
     return user
+
+def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme),
+                              db: Session = Depends(database_manager.get_db)) -> Optional[models.User]:
+    """
+        Dependency to get the current user from a JWT token if present.
+        If the token is missing or invalid, it returns None instead of raising an exception.
+    """
+    if token is None:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        token_data = schemas.TokenData(username=username)
+    except JWTError:
+        return None
+
+    user = crud.get_user_by_username(db, username=token_data.username)
+    return user

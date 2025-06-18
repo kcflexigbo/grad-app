@@ -91,6 +91,7 @@ class User(UserBase, BaseSchema):
     created_at: datetime
     images: List[Image] = []
     albums: List['Album'] = [] # Forward reference to Album
+    is_followed_by_current_user: bool = False  # Default to False
     # followers_count: Optional[int]
     # following_count: Optional[int]
 

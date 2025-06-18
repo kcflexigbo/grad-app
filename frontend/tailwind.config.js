@@ -5,7 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}", // <-- This is the most important line
   ],
   theme: {
-    extend: {},
+    extend: {
+      backgroundImage: {
+        'noise': "url('/noise.svg')",
+      }
+    },
   },
   plugins: [],
 }

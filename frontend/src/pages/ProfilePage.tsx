@@ -6,12 +6,14 @@ import type {Image} from '../types/image';
 import { ImageGrid } from '../components/ImageGrid';
 import { SkeletonLoader as GridSkeletonLoader } from '../components/ui/SkeletonLoader'; // Renaming for clarity
 import { useAuth } from '../hooks/useAuth';
+import { FollowButton} from "../components/FollowButton.tsx";
 
 // Define a more detailed type for the profile page
 interface UserProfile extends User {
     images: Image[];
-    followers_count: number;
-    following_count: number;
+    followers_count?: number;
+    following_count?: number;
+    is_followed_by_current_user?: boolean;
 }
 
 // A new, custom skeleton loader specifically for the Profile Page header
@@ -103,9 +105,12 @@ export const ProfilePage = () => {
                                 Edit Profile
                             </button>
                         ) : (
-                            <button className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700">
-                                Follow
-                            </button>
+                            // <button className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700">
+                            //     Follow
+                            // </button>
+                            <FollowButton
+                                userIdToFollow={profile.id}
+                                initialIsFollowing={profile.is_followed_by_current_user || false}/>
                         )}
                     </div>
                     <div className="flex justify-center md:justify-start gap-6 mt-4 text-gray-600">

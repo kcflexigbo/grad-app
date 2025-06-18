@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from router import router
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
@@ -88,6 +88,34 @@ def read_current_user(current_user: models.User = Depends(security.get_current_u
     The `get_current_user` dependency handles all the token validation.
     """
     return current_user
+
+
+@users_router.get("/profile/{username}", response_model=schemas.User)
+def get_user_profile(
+        username: str,
+        db: Session = Depends(database_manager.get_db),
+        # Use the new optional dependency
+        current_user: Optional[models.User] = Depends(security.get_optional_current_user)
+):
+    profile_user = crud.get_user_by_username(db, username=username)
+    if profile_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # --- Start of New Logic ---
+    is_following = False
+    if current_user and current_user.id != profile_user.id:
+        # Check if a follow relationship exists
+        follow_relationship = crud.get_follow(db, follower_id=current_user.id, following_id=profile_user.id)
+        if follow_relationship:
+            is_following = True
+
+    profile_user.is_followed_by_current_user = is_following
+
+    profile_user.followers_count = db.query(models.Follow).filter(models.Follow.following_id == profile_user.id).count()
+    profile_user.following_count = db.query(models.Follow).filter(models.Follow.follower_id == profile_user.id).count()
+    # --- End of New Logic ---
+
+    return profile_user
 
 
 # Include the routers in the main FastAPI app
