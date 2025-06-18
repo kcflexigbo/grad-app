@@ -110,6 +110,28 @@ def get_user_profile(
 
     return profile_user
 
+@users_router.post("/me/profile-picture", response_model=schemas.User)
+def upload_profile_picture(
+    file: UploadFile = File(...),
+    db: Session = Depends(database_manager.get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    Handles uploading a new profile picture for the currently authenticated user.
+    """
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"profile-pictures/{current_user.id}-{uuid.uuid4()}{file_extension}"
+
+    try:
+        new_profile_pic_url = oss_manager.upload_file_to_oss(file=file, object_name=unique_filename)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload profile picture: {e}")
+
+    current_user.profile_picture_url = new_profile_pic_url
+    db.commit()
+    db.refresh(current_user)
+
+    return current_user
 
 @users_router.post("/{user_id}/follow", status_code=status.HTTP_204_NO_CONTENT)
 def follow_user(

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Comment } from '../types/comment';
+import type { Comment } from '../types/comments';
 
 interface CommentListProps {
     comments: Comment[];

@@ -1,48 +1,63 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Heart, MessageCircle, Download } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Heart, MessageCircle, Download, Loader2 } from 'lucide-react';
 import apiService from '../api/apiService';
-import type {Image} from '../types/image'; // We will use a more detailed image type here
-import { FollowButton} from "../components/FollowButton.tsx";
-// We will use a more detailed image type here
+
+// Import required components and types
+import { FollowButton } from '../components/FollowButton';
+import { CommentList } from '../components/CommentList';
+import { CommentForm } from '../components/CommentForm';
+import type { Image as ImageType } from '../types/image';
+import type { Comment as CommentType } from '../types/comments'; // You will need to create this type
+import { useAuth } from '../hooks/useAuth';
 
 // Define a more detailed type for this page
-interface ImageDetail extends Image {
-    // You might add more detailed owner info or other fields later
-    tags: { id: number; name: string }[];
+interface ImageDetail extends ImageType {
+    is_followed_by_current_user?: boolean; // This will come from the backend
+    comments: CommentType[];
+    // We will add more fields for like status
+    is_liked_by_current_user?: boolean;
 }
 
+// Data fetching function for React Query
+const fetchImageDetail = async (id: string): Promise<ImageDetail> => {
+    const { data } = await apiService.get<ImageDetail>(`/images/${id}`);
+    return data;
+};
+
 export const PhotoDetailPage = () => {
-    const { id } = useParams<{ id: string }>(); // Get the image ID from the URL
-    const [image, setImage] = useState<ImageDetail | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { id } = useParams<{ id: string }>();
+    const queryClient = useQueryClient();
+    const { user: currentUser } = useAuth();
+
+    // Use React Query to fetch and cache the image data
+    const { data: image, isLoading, isError, error } = useQuery({
+        queryKey: ['image', id],
+        queryFn: () => fetchImageDetail(id!),
+        enabled: !!id, // Only run the query if the id exists
+    });
+
+    // --- State for optimistic UI updates for comments ---
+    const [comments, setComments] = useState<CommentType[]>([]);
 
     useEffect(() => {
-        if (!id) {
-            setError("No image ID provided.");
-            setIsLoading(false);
-            return;
+        if (image?.comments) {
+            setComments(image.comments);
         }
+    }, [image?.comments]);
 
-        const fetchImageDetail = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const response = await apiService.get<ImageDetail>(`/images/${id}`);
-                setImage(response.data);
-            } catch (err) {
-                setError("Could not find the requested photo.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const handleCommentPosted = (newComment: CommentType) => {
+        setComments(prevComments => [...prevComments, newComment]);
+        // Also update the comment count on the main image object in the cache
+        queryClient.setQueryData(['image', id], (oldData: ImageDetail | undefined) => {
+            if (!oldData) return oldData;
+            return { ...oldData, comment_count: oldData.comment_count + 1 };
+        });
+    };
 
-        fetchImageDetail();
-    }, [id]);
-
+    // --- Skeleton Loader ---
     if (isLoading) {
-        // A more detailed skeleton for a single page view
         return (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-pulse">
                 <div className="lg:col-span-2 bg-gray-300 rounded-lg h-[70vh]"></div>
@@ -58,14 +73,15 @@ export const PhotoDetailPage = () => {
         );
     }
 
-    if (error) {
-        return <div className="text-center text-red-500 py-10">{error}</div>;
+    // --- Error and Not Found States ---
+    if (isError) {
+        return <div className="text-center text-red-500 py-10">Error: {(error as any).message || "Could not find the requested photo."}</div>;
     }
-
     if (!image) {
         return <div className="text-center text-gray-500 py-10">Photo not found.</div>;
     }
 
+    // --- Main Component Render ---
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             {/* Left Column: The Image */}
@@ -88,10 +104,13 @@ export const PhotoDetailPage = () => {
                             <p className="text-sm text-gray-500">Posted on {new Date(image.created_at).toLocaleDateString()}</p>
                         </div>
                     </Link>
-                    {/*<button className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700">*/}
-                    {/*    Follow*/}
-                    {/*</button>*/}
-                    <FollowButton userIdToFollow={image.owner.id} initialIsFollowing={false}/>
+                    {/* --- REUSABLE FOLLOW BUTTON --- */}
+                    {currentUser?.id !== image.owner.id && (
+                        <FollowButton
+                            userIdToFollow={image.owner.id}
+                            initialIsFollowing={image.is_followed_by_current_user || false}
+                        />
+                    )}
                 </div>
 
                 <hr />
@@ -113,22 +132,26 @@ export const PhotoDetailPage = () => {
                     <button className="flex items-center gap-2 hover:text-red-500">
                         <Heart /> <span>{image.like_count} Likes</span>
                     </button>
-                     <button className="flex items-center gap-2 hover:text-blue-500">
+                    <button className="flex items-center gap-2 hover:text-blue-500">
                         <MessageCircle /> <span>{image.comment_count} Comments</span>
                     </button>
-                    <button className="flex items-center gap-2 hover:text-green-500">
-                        <Download /> <span>Download</span>
-                    </button>
+                    {image.owner.allow_downloads && (
+                         <button className="flex items-center gap-2 hover:text-green-500">
+                            <Download /> <span>Download</span>
+                        </button>
+                    )}
                 </div>
 
                 <hr />
 
-                {/* Comment Section Placeholder */}
-                <div className="flex-grow">
-                    <h3 className="font-bold text-lg mb-4">Comments</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg h-full">
-                        <p className="text-gray-400 text-center">Live comment section coming soon...</p>
-                        {/* The <CommentList /> and <CommentForm /> components will go here */}
+                {/* --- FULLY IMPLEMENTED COMMENT SECTION --- */}
+                <div className="flex-grow flex flex-col">
+                    <h3 className="font-bold text-lg mb-4">Comments ({image.comment_count})</h3>
+                    <div className="flex-grow space-y-4 overflow-y-auto max-h-96 pr-2">
+                         <CommentList comments={comments} />
+                    </div>
+                    <div className="mt-auto pt-4">
+                        <CommentForm imageId={image.id} onCommentPosted={handleCommentPosted} />
                     </div>
                 </div>
             </div>

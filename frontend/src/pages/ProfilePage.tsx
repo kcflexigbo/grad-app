@@ -1,20 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 import apiService from '../api/apiService';
-import type {User} from '../types/user';
-import type {Image} from '../types/image';
+import type { User } from '../types/user';
+import type { Image } from '../types/image';
+
+// Import required components
 import { ImageGrid } from '../components/ImageGrid';
-import { SkeletonLoader as GridSkeletonLoader } from '../components/ui/SkeletonLoader'; // Renaming for clarity
+import { SkeletonLoader as GridSkeletonLoader } from '../components/ui/SkeletonLoader';
+import { FollowButton } from '../components/FollowButton'; // Import the component
 import { useAuth } from '../hooks/useAuth';
-import { FollowButton} from "../components/FollowButton.tsx";
+import { ProfilePictureModal } from '../components/ProfilePictureModal';
 
 // Define a more detailed type for the profile page
 interface UserProfile extends User {
     images: Image[];
-    followers_count?: number;
-    following_count?: number;
+    followers_count: number;
+    following_count: number;
     is_followed_by_current_user?: boolean;
 }
+
+// Data fetching function for React Query
+const fetchProfile = async (username: string): Promise<UserProfile> => {
+    const { data } = await apiService.get<UserProfile>(`/users/profile/${username}`);
+    return data;
+};
 
 // A new, custom skeleton loader specifically for the Profile Page header
 const ProfileHeaderSkeleton = () => (
@@ -38,33 +48,30 @@ const ProfileHeaderSkeleton = () => (
     </header>
 );
 
-
 export const ProfilePage = () => {
     const { username } = useParams<{ username: string }>();
     const { user: currentUser } = useAuth();
-    const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+
+    const [isPfpModalOpen, setIsPfpModalOpen] = useState(false);
+
+    const { data: profile, isLoading, isError, error } = useQuery({
+        queryKey: ['profile', username],
+        queryFn: () => fetchProfile(username!),
+        enabled: !!username,
+    });
 
     const isOwnProfile = currentUser?.username === username;
 
-    useEffect(() => {
-        if (!username) return;
-
-        const fetchProfile = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const response = await apiService.get<UserProfile>(`/users/profile/${username}`);
-                setProfile(response.data);
-            } catch (err) {
-                setError("This user profile could not be found.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchProfile();
-    }, [username]);
+    const handleUploadSuccess = (newImageUrl: string) => {
+        queryClient.setQueryData(['profile', username], (oldData: UserProfile | undefined) => {
+            if (!oldData) return oldData;
+            return { ...oldData, profile_picture_url: newImageUrl };
+        });
+        if(isOwnProfile) {
+            queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
+        }
+    };
 
     // --- Loading State ---
     if (isLoading) {
@@ -78,8 +85,8 @@ export const ProfilePage = () => {
     }
 
     // --- Error State ---
-    if (error) {
-        return <div className="text-center text-red-500 py-10 text-xl">{error}</div>;
+    if (isError) {
+        return <div className="text-center text-red-500 py-10 text-xl">{(error as any).message || "This user profile could not be found."}</div>;
     }
 
     // --- Not Found State ---
@@ -89,52 +96,63 @@ export const ProfilePage = () => {
 
     // --- Success State ---
     return (
-        <div className="space-y-12">
-            {/* Profile Header Section */}
-            <header className="flex flex-col md:flex-row items-center gap-8">
-                <img
-                    src={profile.profile_picture_url || 'https://via.placeholder.com/128'}
-                    alt={profile.username}
-                    className="w-32 h-32 rounded-full object-cover ring-4 ring-white shadow-lg"
-                />
-                <div className="flex-grow text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-4">
-                        <h1 className="text-3xl font-bold text-gray-800">{profile.username}</h1>
-                        {isOwnProfile ? (
-                            <button className="bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-md hover:bg-gray-300">
-                                Edit Profile
-                            </button>
-                        ) : (
-                            // <button className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700">
-                            //     Follow
-                            // </button>
-                            <FollowButton
-                                userIdToFollow={profile.id}
-                                initialIsFollowing={profile.is_followed_by_current_user || false}/>
-                        )}
+        <>
+            <div className="space-y-12">
+                {/* Profile Header Section */}
+                <header className="flex flex-col md:flex-row items-center gap-8">
+                     <button onClick={() => setIsPfpModalOpen(true)} className="flex-shrink-0">
+                            <img
+                                src={profile.profile_picture_url || 'https://via.placeholder.com/128'}
+                                alt={profile.username}
+                                className="w-32 h-32 rounded-full object-cover ring-4 ring-white shadow-lg cursor-pointer transition-transform hover:scale-105"
+                            />
+                    </button>
+                    <div className="flex-grow text-center md:text-left">
+                        <div className="flex items-center justify-center md:justify-start gap-4">
+                            <h1 className="text-3xl font-bold text-gray-800">{profile.username}</h1>
+                            {isOwnProfile ? (
+                                <button className="bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-md hover:bg-gray-300">
+                                    Edit Profile
+                                </button>
+                            ) : (
+                                // --- REUSABLE FOLLOW BUTTON ---
+                                <FollowButton
+                                    userIdToFollow={profile.id}
+                                    initialIsFollowing={profile.is_followed_by_current_user || false}
+                                />
+                            )}
+                        </div>
+                        <div className="flex justify-center md:justify-start gap-6 mt-4 text-gray-600">
+                            <span><span className="font-bold">{profile.images.length}</span> posts</span>
+                            <span><span className="font-bold">{profile.followers_count}</span> followers</span>
+                            <span><span className="font-bold">{profile.following_count}</span> following</span>
+                        </div>
+                        <p className="mt-4 max-w-lg mx-auto md:mx-0">{profile.bio || "This user hasn't written a bio yet."}</p>
                     </div>
-                    <div className="flex justify-center md:justify-start gap-6 mt-4 text-gray-600">
-                        <span><span className="font-bold">{profile.images.length}</span> posts</span>
-                        <span><span className="font-bold">{profile.followers_count}</span> followers</span>
-                        <span><span className="font-bold">{profile.following_count}</span> following</span>
-                    </div>
-                    <p className="mt-4 max-w-lg mx-auto md:mx-0">{profile.bio || "This user hasn't written a bio yet."}</p>
-                </div>
-            </header>
+                </header>
 
-            <hr />
+                <hr />
 
-            {/* User's Photo Grid Section */}
-            <main>
-                <h2 className="text-xl font-semibold text-center mb-6 uppercase tracking-wider text-gray-500">Posts</h2>
-                {profile.images.length > 0 ? (
-                    <ImageGrid images={profile.images} />
-                ) : (
-                    <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
-                        This user hasn't posted any photos yet.
-                    </div>
-                )}
-            </main>
-        </div>
+                {/* User's Photo Grid Section */}
+                <main>
+                    <h2 className="text-xl font-semibold text-center mb-6 uppercase tracking-wider text-gray-500">Posts</h2>
+                    {profile.images.length > 0 ? (
+                        <ImageGrid images={profile.images} />
+                    ) : (
+                        <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
+                            This user hasn't posted any photos yet.
+                        </div>
+                    )}
+                </main>
+            </div>
+
+            <ProfilePictureModal
+                    isOpen={isPfpModalOpen}
+                    onClose={() => setIsPfpModalOpen(false)}
+                    imageUrl={profile.profile_picture_url || 'https://via.placeholder.com/128'}
+                    isOwnProfile={isOwnProfile}
+                    onUploadSuccess={handleUploadSuccess}
+            />
+    </>
     );
 };

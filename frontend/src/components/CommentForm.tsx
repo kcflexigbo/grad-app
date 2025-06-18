@@ -1,7 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import apiService from '../api/apiService';
-import { Comment } from '../types/comment'; // Assuming you create this type
+import type {Comment} from '../types/comments'; // Assuming you create this type
 
 interface CommentFormProps {
     imageId: number;
