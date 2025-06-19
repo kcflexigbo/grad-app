@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 
-// Ready state constants for WebSocket connections
-enum ReadyState {
-    Connecting = 0,
-    Open = 1,
-    Closing = 2,
-    Closed = 3,
-}
+// --- NEW, MORE ROBUST METHOD ---
+// Use a plain object with 'as const' to get strong types without a TypeScript enum.
+const ReadyState = {
+    Connecting: 0,
+    Open: 1,
+    Closing: 2,
+    Closed: 3,
+} as const;
 
-// The hook's return type
+
+type ReadyState = typeof ReadyState[keyof typeof ReadyState];
+
+// The hook's return type now uses our new erasable type.
 interface WebSocketHook<T> {
     lastMessage: T | null;
     readyState: ReadyState;
@@ -17,16 +21,15 @@ interface WebSocketHook<T> {
 
 export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
     const [lastMessage, setLastMessage] = useState<T | null>(null);
+    // The initial state now uses the object property, which is type-safe.
     const [readyState, setReadyState] = useState<ReadyState>(ReadyState.Closed);
     const ws = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        // Don't connect if the URL is null (e.g., waiting for an ID)
         if (url === null) {
             return;
         }
 
-        // Create a new WebSocket connection
         const socket = new WebSocket(url);
         ws.current = socket;
         setReadyState(ReadyState.Connecting);
@@ -53,16 +56,16 @@ export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
 
         socket.onerror = (error) => {
             console.error('WebSocket error:', error);
-            setReadyState(ReadyState.Closed); // Often closes after an error
+            setReadyState(ReadyState.Closed);
         };
 
-        // Crucial cleanup function: close the socket when the component unmounts
         return () => {
+            // We now check against the object's value directly.
             if (socket.readyState === ReadyState.Open) {
                 socket.close();
             }
         };
-    }, [url]); // Re-run the effect if the URL changes
+    }, [url]);
 
     const sendMessage = (data: any) => {
         if (ws.current && ws.current.readyState === ReadyState.Open) {

@@ -133,12 +133,13 @@ export const ProfilePage = () => {
                     <div className="flex-grow text-center md:text-left">
                         <div className="flex items-center justify-center md:justify-start gap-4">
                             <h1 className="text-3xl font-bold text-gray-800">{profile.username}</h1>
-                            {isOwnProfile ? (
-                                <button className="bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-md hover:bg-gray-300">
-                                    Edit Profile
-                                </button>
-                            ) : (
-                                // --- REUSABLE FOLLOW BUTTON ---
+                            {/*{isOwnProfile ? (*/}
+                            {/*    // <button className="bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-md hover:bg-gray-300">*/}
+                            {/*    //     Edit Profile*/}
+                            {/*    // </button>*/}
+                            {/*) : (*/}
+                            {/*    // --- REUSABLE FOLLOW BUTTON ---*/}
+                            {!isOwnProfile && (
                                 <FollowButton
                                     userIdToFollow={profile.id}
                                     initialIsFollowing={profile.is_followed_by_current_user || false}
