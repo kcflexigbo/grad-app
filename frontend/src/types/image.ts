@@ -3,6 +3,7 @@ interface ImageOwner {
     id: number;
     username: string;
     profile_picture_url: string | null;
+    allow_downloads: boolean;
 }
 
 // This is the interface for a simplified tag object.
@@ -22,11 +23,9 @@ export interface Image {
     caption: string | null;
     created_at: string; // Timestamps are typically serialized as ISO strings
 
-    // Nested objects representing relationships
     owner: ImageOwner;
     tags: ImageTag[];
 
-    // These counts should be calculated and included by your backend API
     like_count: number;
     comment_count: number;
 }

@@ -47,6 +47,7 @@ class Image(ImageBase, BaseSchema):
     tags: List[Tag] = []
     like_count: int = 0
     comment_count: int = 0
+    is_liked_by_current_user: bool = False
 
 # --- Album Schemas ---
 
@@ -81,6 +82,10 @@ class UserUpdate(BaseModel):
     profile_picture_url: Optional[str] = None
     allow_downloads: Optional[bool] = None
 
+class UserPasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
 class User(UserBase, BaseSchema):
     id: int
     email: EmailStr
@@ -90,10 +95,10 @@ class User(UserBase, BaseSchema):
     created_at: datetime
     images: List[Image] = []
     albums: List['Album'] = []
-    # --- ADDED FIELDS ---
     followers_count: int = 0
     following_count: int = 0
     is_followed_by_current_user: bool = False
+    is_admin: bool
 
 
 # --- Interaction Schemas (Likes, Comments, Follows) ---
@@ -153,6 +158,12 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+
+# --- Search Schemas ---
+class SearchResults(BaseModel):
+    users: List[UserSimple]
+    photos: List[Image]
 
 # --- Rebuild Models with Forward References ---
 Album.model_rebuild()

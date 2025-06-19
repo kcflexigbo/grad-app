@@ -1,16 +1,27 @@
-import { Link, NavLink } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth'; // Placeholder hook
-import { Bell, Upload } from 'lucide-react'; // Using lucide-react for clean icons
-
-// You might want to install lucide-react for nice icons: npm install lucide-react
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { Bell, Upload, Search } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Settings } from 'lucide-react';
 
 interface NavbarProps {
     onUploadClick: () => void;
+    notificationCount: number;
 }
 
-export const Navbar = ({ onUploadClick }: NavbarProps) => {
+export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
     // This hook will provide the authentication state once AuthContext is implemented
-    const { isLoggedIn, user, logout } = useAuth();
+    const { isLoggedIn, user } = useAuth();
+    const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const handleSearchSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+            setSearchQuery('');
+        }
+    };
 
     // Active link style for NavLink
     const activeLinkStyle = {
@@ -30,10 +41,19 @@ export const Navbar = ({ onUploadClick }: NavbarProps) => {
                     </div>
 
                     {/* Center: Search Bar (Placeholder) */}
-                    <div className="hidden md:block">
-                        <div className="relative">
-                            {/* We can add a search component here later */}
-                        </div>
+                    <div className="hidden md:block w-full max-w-md">
+                        <form onSubmit={handleSearchSubmit} className="relative">
+                            <input
+                                type="search"
+                                placeholder="Search for photos or users..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <div className="absolute top-0 left-0 flex items-center h-full pl-3">
+                                <Search size={20} className="text-gray-400" />
+                            </div>
+                        </form>
                     </div>
 
                     {/* Right Side: Actions & User Menu */}
@@ -41,6 +61,7 @@ export const Navbar = ({ onUploadClick }: NavbarProps) => {
                         {isLoggedIn && user ? (
                             // --- Authenticated User View ---
                             <>
+                                {/* ... Upload button ... */}
                                 <button
                                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                                     onClick={onUploadClick}
@@ -48,19 +69,25 @@ export const Navbar = ({ onUploadClick }: NavbarProps) => {
                                     <Upload size={18} />
                                     <span>Upload</span>
                                 </button>
-                                <button className="p-2 rounded-full hover:bg-gray-100">
+                                <Link to="/notifications" className="relative p-2 rounded-full hover:bg-gray-100">
                                     <Bell size={20} className="text-gray-600" />
-                                </button>
-                                <div className="relative">
-                                    {/* Dropdown menu will be added here */}
+                                    {notificationCount > 0 && (
+                                        <span className="absolute top-0 right-0 block h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                                            {notificationCount}
+                                        </span>
+                                    )}
+                                </Link>
+                                <div className="flex items-center space-x-2">
+                                    <Link to="/settings" className="p-2 rounded-full hover:bg-gray-100" title="Settings">
+                                        <Settings size={20} className="text-gray-600" />
+                                    </Link>
                                     <Link to={`/profile/${user.username}`}>
                                         <img
-                                            src={user.profile_picture_url || 'https://via.placeholder.com/40'} // Default avatar
+                                            src={user.profile_picture_url || 'https://via.placeholder.com/40'}
                                             alt={`${user.username}'s profile`}
                                             className="h-10 w-10 rounded-full object-cover border-2 border-transparent hover:border-blue-500"
                                         />
                                     </Link>
-                                    {/* We will add a dropdown on click with "Settings" and "Logout" */}
                                 </div>
                             </>
                         ) : (

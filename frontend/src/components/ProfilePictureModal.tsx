@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { X, UploadCloud, Loader2 } from 'lucide-react';
 import apiService from '../api/apiService';
 

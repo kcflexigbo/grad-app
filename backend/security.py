@@ -105,3 +105,15 @@ def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme),
 
     user = crud.get_user_by_username(db, username=token_data.username)
     return user
+
+def get_current_admin_user(current_user: models.User = Depends(get_current_user)) -> models.User:
+    """
+    Dependency that reuses get_current_user but adds a check
+    to ensure the user has admin privileges.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user doesn't have enough privileges"
+        )
+    return current_user

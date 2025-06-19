@@ -1,22 +1,24 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
 import apiService from '../api/apiService';
 import type { User } from '../types/user';
 import type { Image } from '../types/image';
+import type { Album } from '../types/album';
+import { Camera, BookCopy } from 'lucide-react';
 
 // Import required components
 import { ImageGrid } from '../components/ImageGrid';
 import { SkeletonLoader as GridSkeletonLoader } from '../components/ui/SkeletonLoader';
-import { FollowButton } from '../components/FollowButton'; // Import the component
+import { FollowButton } from '../components/FollowButton';
 import { useAuth } from '../hooks/useAuth';
 import { ProfilePictureModal } from '../components/ProfilePictureModal';
 
-// Define a more detailed type for the profile page
 interface UserProfile extends User {
     images: Image[];
     followers_count: number;
     following_count: number;
+    albums: Album[];
     is_followed_by_current_user?: boolean;
 }
 
@@ -54,6 +56,7 @@ export const ProfilePage = () => {
     const queryClient = useQueryClient();
 
     const [isPfpModalOpen, setIsPfpModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'photos' | 'albums'>('photos');
 
     const { data: profile, isLoading, isError, error } = useQuery({
         queryKey: ['profile', username],
@@ -133,17 +136,69 @@ export const ProfilePage = () => {
 
                 <hr />
 
-                {/* User's Photo Grid Section */}
+                <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex justify-center space-x-8" aria-label="Tabs">
+                        <button
+                            onClick={() => setActiveTab('photos')}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                                activeTab === 'photos' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            <Camera size={16} /> Posts
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('albums')}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                                activeTab === 'albums' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            <BookCopy size={16} /> Albums
+                        </button>
+                    </nav>
+                </div>
+
                 <main>
-                    <h2 className="text-xl font-semibold text-center mb-6 uppercase tracking-wider text-gray-500">Posts</h2>
-                    {profile.images.length > 0 ? (
-                        <ImageGrid images={profile.images} />
-                    ) : (
-                        <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
-                            This user hasn't posted any photos yet.
-                        </div>
+                    {/* User's Photo Grid Section */}
+                    {activeTab === 'photos' && (
+                        profile.images.length > 0 ? (
+                            <ImageGrid images={profile.images} />
+                        ) : (
+                            <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
+                                This user hasn't posted any photos yet.
+                            </div>
+                        )
+                    )}
+
+                    {/* User's Album Grid Section */}
+                    {activeTab === 'albums' && (
+                        profile.albums.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {profile.albums.map(album => (
+                                    <Link key={album.id} to={`/album/${album.id}`} className="block p-4 bg-white border rounded-lg hover:shadow-lg transition-shadow">
+                                        <h3 className="font-bold text-lg truncate">{album.name}</h3>
+                                        <p className="text-sm text-gray-600 mt-1 truncate">{album.description || 'No description'}</p>
+                                        <p className="text-xs text-gray-400 mt-4">{album.images.length} photos</p>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                             <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
+                                This user hasn't created any albums yet.
+                            </div>
+                        )
                     )}
                 </main>
+
+                {/*<main>*/}
+                {/*    <h2 className="text-xl font-semibold text-center mb-6 uppercase tracking-wider text-gray-500">Posts</h2>*/}
+                {/*    {profile.images.length > 0 ? (*/}
+                {/*        <ImageGrid images={profile.images} />*/}
+                {/*    ) : (*/}
+                {/*        <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">*/}
+                {/*            This user hasn't posted any photos yet.*/}
+                {/*        </div>*/}
+                {/*    )}*/}
+                {/*</main>*/}
             </div>
 
             <ProfilePictureModal

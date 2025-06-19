@@ -1,9 +1,9 @@
 # C:/Users/kcfle/Documents/React Projects/grad-app/backend/crud.py
+from typing import List
 
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy.orm import Session, contains_eager
+from sqlalchemy import func, or_
 import schemas, security, models
-
 # --- User CRUD Functions ---
 
 def get_user(db: Session, user_id: int):
@@ -48,6 +48,12 @@ def update_user(db: Session, db_user: models.User, user_update: schemas.UserUpda
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def update_user_password(db: Session, user: models.User, new_password: str):
+    """Hashes and updates a user's password."""
+    user.hashed_password = security.get_password_hash(new_password)
+    db.commit()
+    return user
 
 
 # --- Image CRUD Functions ---
@@ -213,6 +219,23 @@ def delete_follow(db: Session, follow: models.Follow):
     return True
 
 
+def create_notification(db: Session, recipient_id: int, actor_id: int, type: models.NotificationType, related_entity_id: int):
+    """Creates a notification for a user action."""
+    # Avoid creating a notification if a user interacts with their own content
+    if recipient_id == actor_id:
+        return None
+
+    db_notification = models.Notification(
+        recipient_id=recipient_id,
+        actor_id=actor_id,
+        type=type,
+        related_entity_id=related_entity_id
+    )
+    db.add(db_notification)
+    db.commit()
+    db.refresh(db_notification)
+    return db_notification
+
 def get_follower_count_for_user(db: Session, user_id: int) -> int:
     """Gets the number of followers a user has."""
     return db.query(models.Follow).filter(models.Follow.following_id == user_id).count()
@@ -245,3 +268,102 @@ def add_image_to_album(db: Session, image: models.Image, album: models.Album):
         album.images.append(image)
         db.commit()
     return album
+
+# --- NEW SEARCH FUNCTION ---
+
+def search_content(db: Session, query: str, limit: int = 20):
+    """
+    Searches for users by username and photos by caption or tag.
+    """
+    search_term = f"%{query.lower()}%"
+
+    users = (
+        db.query(models.User)
+        .filter(models.User.username.ilike(search_term))
+        .limit(limit)
+        .all()
+    )
+
+    photos = (
+        db.query(models.Image)
+        .outerjoin(models.Image.tags)
+        .filter(
+            or_(
+                models.Image.caption.ilike(search_term),
+                models.Tag.name.ilike(search_term)
+            )
+        )
+        .distinct(models.Image.id)
+        .limit(limit)
+        .all()
+    )
+
+    return {"users": users, "photos": photos}
+
+def get_notification(db: Session, notification_id: int):
+    """Retrieves a single notification by its ID."""
+    return db.query(models.Notification).filter(models.Notification.id == notification_id).first()
+
+def get_notifications_for_user(db: Session, user_id: int, limit: int = 50):
+    """Retrieves a paginated list of notifications for a user."""
+    return (
+        db.query(models.Notification)
+        .filter(models.Notification.recipient_id == user_id)
+        .order_by(models.Notification.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+def mark_notification_as_read(db: Session, notification: models.Notification):
+    """Marks a single notification as read."""
+    notification.is_read = True
+    db.commit()
+    return notification
+
+# --- NEW REPORTING AND ADMIN CRUD FUNCTIONS ---
+
+def create_report(db: Session, report: schemas.ReportCreate, reporter_id: int) -> models.Report:
+    """Creates a new content report in the database."""
+    db_report = models.Report(**report.model_dump(), reporter_id=reporter_id)
+    db.add(db_report)
+    db.commit()
+    db.refresh(db_report)
+    return db_report
+
+
+def get_reports(db: Session, skip: int = 0, limit: int = 100) -> List[models.Report]:
+    """Retrieves a list of all reports, newest first."""
+    return db.query(models.Report).order_by(models.Report.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def get_report(db: Session, report_id: int) -> models.Report:
+    """Retrieves a single report by its ID."""
+    return db.query(models.Report).filter(models.Report.id == report_id).first()
+
+
+def update_report_status(db: Session, report: models.Report, status: models.ReportStatus) -> models.Report:
+    """Updates the status of a report."""
+    report.status = status
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+def toggle_image_featured_status(db: Session, image: models.Image) -> models.Image:
+    """Flips the 'is_featured' boolean on an image."""
+    image.is_featured = not image.is_featured
+    db.commit()
+    db.refresh(image)
+    return image
+
+
+def get_comment(db: Session, comment_id: int) -> models.Comment:
+    """Retrieves a single comment by its ID."""
+    return db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+
+
+def delete_comment(db: Session, comment: models.Comment):
+    """Deletes a comment from the database."""
+    db.delete(comment)
+    db.commit()
+    return True

@@ -5,5 +5,6 @@ export interface User {
     bio?: string | null;
     profile_picture_url?: string | null;
     allow_downloads: boolean;
+    is_admin?: boolean;
     created_at: string; // Assuming ISO string format from backend
 }
