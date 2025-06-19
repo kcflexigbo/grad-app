@@ -146,9 +146,18 @@ export const ProfilePage = () => {
                             )}
                         </div>
                         <div className="flex justify-center md:justify-start gap-6 mt-4 text-gray-600">
-                            <span><span className="font-bold">{profile.images.length}</span> posts</span>
-                            <span><span className="font-bold">{profile.followers_count}</span> followers</span>
-                            <span><span className="font-bold">{profile.following_count}</span> following</span>
+                            <span className="text-center">
+                                <span className="font-bold block text-lg text-brand-dark">{profile.images.length}</span>
+                                <span className="text-sm">posts</span>
+                            </span>
+                            <Link to={`/profile/${profile.username}/followers`} className="text-center hover:text-brand-accent transition-colors">
+                                <span className="font-bold block text-lg text-brand-dark">{profile.followers_count}</span>
+                                <span className="text-sm">followers</span>
+                            </Link>
+                            <Link to={`/profile/${profile.username}/following`} className="text-center hover:text-brand-accent transition-colors">
+                                <span className="font-bold block text-lg text-brand-dark">{profile.following_count}</span>
+                                <span className="text-sm">following</span>
+                            </Link>
                         </div>
                         <p className="mt-4 max-w-lg mx-auto md:mx-0">{profile.bio || "This user hasn't written a bio yet."}</p>
                     </div>

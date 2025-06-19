@@ -5,7 +5,7 @@ import { ImageGrid } from '../components/ImageGrid';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import apiService from '../api/apiService';
 import type {Image} from '../types/image';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Camera } from 'lucide-react';
 
 type SortOption = 'newest' | 'popular' | 'featured';
 const PAGE_SIZE = 12;
@@ -26,12 +26,7 @@ const fetchImages = async ({ pageParam = 0, sortBy }: { pageParam?: number, sort
 
 export const HomePage = () => {
     const [sortBy, setSortBy] = useState<SortOption>('newest');
-
-    // --- INFINITE SCROLL SETUP ---
-    // 1. Get the ref and inView state from the hook
-    const { ref, inView } = useInView({
-        threshold: 0.5, // Trigger when 50% of the loader is visible
-    });
+    const { ref, inView } = useInView({ threshold: 0.5 });
 
     const {
         data,
@@ -63,58 +58,58 @@ export const HomePage = () => {
     };
 
     const getSortButtonClass = (option: SortOption) => {
-        const baseClass = "px-4 py-2 rounded-md font-medium transition-colors text-sm sm:text-base";
+        const baseClass = "px-4 py-2 rounded-full font-semibold transition-all duration-300 text-sm sm:text-base shadow-sm";
         if (sortBy === option) {
-            return `${baseClass} bg-blue-600 text-white shadow`;
+            return `${baseClass} bg-brand-dark text-white scale-105`;
         }
-        return `${baseClass} bg-white text-gray-700 hover:bg-gray-100 border`;
+        return `${baseClass} bg-white text-brand-text hover:bg-gray-200 border border-gray-200`;
     };
 
     return (
-        <div className="space-y-8">
-            <header>
-                <h1 className="text-4xl font-bold font-serif text-gray-800 tracking-tight">The Gallery</h1>
-                <p className="text-lg text-gray-600 mt-2">Discover photos from the recent graduation celebration.</p>
+        <div className="space-y-12">
+            <header className="text-center py-10 md:py-16 border-b border-gray-200/80">
+                <h1 className="text-5xl md:text-6xl font-bold tracking-tight">The Graduation Gallery</h1>
+                <p className="text-lg text-brand-text mt-4 max-w-2xl mx-auto">A shared space to discover, celebrate, and cherish the moments from a milestone achievement.</p>
             </header>
 
-            <div className="flex items-center gap-3">
-                <button onClick={() => handleSortChange('newest')} className={getSortButtonClass('newest')}>
-                    Most Recent
-                </button>
-                <button onClick={() => handleSortChange('popular')} className={getSortButtonClass('popular')}>
-                    Most Popular
-                </button>
-                <button onClick={() => handleSortChange('featured')} className={getSortButtonClass('featured')}>
-                    Featured
-                </button>
-            </div>
-
-            <div>
-                {isLoading && <SkeletonLoader count={12} />}
-                {error && <div className="text-center text-red-500 py-10 bg-red-50 rounded-lg">Error: {error.message}</div>}
-                {!isLoading && !error && allImages.length === 0 && (
-                     <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
-                        <h3 className="text-xl font-semibold">It's a bit empty here...</h3>
-                        <p>No images found for this category. Be the first to upload!</p>
+            <main className="space-y-8">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                     <h2 className="text-2xl font-semibold">Explore Photos</h2>
+                     <div className="flex items-center justify-center gap-2 p-1 bg-gray-100 rounded-full">
+                        <button onClick={() => handleSortChange('newest')} className={getSortButtonClass('newest')}>Most Recent</button>
+                        <button onClick={() => handleSortChange('popular')} className={getSortButtonClass('popular')}>Most Popular</button>
+                        <button onClick={() => handleSortChange('featured')} className={getSortButtonClass('featured')}>Featured</button>
                     </div>
-                )}
-                {allImages.length > 0 && <ImageGrid images={allImages} />}
-            </div>
-
-            <div className="flex justify-center mt-12 h-10">
-                <div ref={ref}>
-                    {isFetchingNextPage && (
-                        <div className="flex items-center gap-2 text-gray-500">
-                            <Loader2 className="animate-spin" size={20} />
-                            <span>Loading more...</span>
-                        </div>
-                    )}
                 </div>
 
-                {!hasNextPage && !isLoading && !isFetchingNextPage && allImages.length > 0 && (
-                    <p className="text-gray-500">You've reached the end of the gallery!</p>
-                )}
-            </div>
+                <div>
+                    {isLoading && <SkeletonLoader count={12} />}
+                    {error && <div className="text-center text-red-500 py-10 bg-red-50 rounded-lg">Error: {error.message}</div>}
+                    {!isLoading && !error && allImages.length === 0 && (
+                         <div className="text-center text-gray-500 py-20 bg-white rounded-lg border-2 border-dashed">
+                             <Camera size={48} className="mx-auto text-gray-300" />
+                            <h3 className="text-2xl font-semibold mt-4">A Blank Canvas</h3>
+                            <p className="mt-2">This gallery is waiting for its first masterpiece. Be the first to upload!</p>
+                        </div>
+                    )}
+                    {allImages.length > 0 && <ImageGrid images={allImages} />}
+                </div>
+
+                <div className="flex justify-center mt-12 h-10">
+                    <div ref={ref}>
+                        {isFetchingNextPage && (
+                            <div className="flex items-center gap-2 text-gray-500">
+                                <Loader2 className="animate-spin" size={20} />
+                                <span>Loading more memories...</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {!hasNextPage && !isLoading && !isFetchingNextPage && allImages.length > 0 && (
+                        <p className="text-gray-500 font-serif text-lg">You've reached the end of the gallery.</p>
+                    )}
+                </div>
+            </main>
         </div>
     );
 };

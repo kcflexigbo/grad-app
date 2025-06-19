@@ -98,6 +98,13 @@ def get_most_followed_users(db: Session, limit: int = 10):
         .all()
     )
 
+def get_user_followers(db: Session, user_id: int) -> List[models.User]:
+    """Retrieves a list of users who follow the given user."""
+    return db.query(models.User).join(models.Follow, models.User.id == models.Follow.follower_id).filter(models.Follow.following_id == user_id).all()
+
+def get_user_following(db: Session, user_id: int) -> List[models.User]:
+    """Retrieves a list of users the given user is following."""
+    return db.query(models.User).join(models.Follow, models.User.id == models.Follow.following_id).filter(models.Follow.follower_id == user_id).all()
 
 def update_user(db: Session, db_user: models.User, user_update: schemas.UserUpdate):
     """Updates a user's profile information."""

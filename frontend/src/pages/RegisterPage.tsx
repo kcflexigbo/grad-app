@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiService from '../api/apiService';
+import { UserPlus } from 'lucide-react';
 
 export const RegisterPage = () => {
     const [username, setUsername] = useState('');
@@ -19,8 +20,9 @@ export const RegisterPage = () => {
                 email,
                 password,
             });
-            // On successful registration, redirect to the login page
+            // On successful registration, redirect to the login page with a success message
             navigate('/login');
+            // We can add a toast notification here in a real app
         } catch (err: any) {
             if (err.response && err.response.data && err.response.data.detail) {
                 setError(err.response.data.detail);
@@ -31,56 +33,85 @@ export const RegisterPage = () => {
     };
 
     return (
-        <div className="flex items-center justify-center">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-                <h1 className="text-2xl font-bold text-center text-gray-800">Create an Account</h1>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label htmlFor="username" className="text-sm font-bold text-gray-600 block">Username</label>
-                        <input
-                            id="username"
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                            className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+        <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="w-full max-w-4xl flex flex-row-reverse rounded-xl shadow-2xl overflow-hidden">
+
+                {/* Left Side: Image & Branding */}
+                <div className="hidden md:block w-1/2 relative">
+                    <img
+                        src="https://images.unsplash.com/photo-1525921429624-479b6a26d84d?q=80&w=1740&auto=format&fit=crop"
+                        alt="Friends celebrating"
+                        className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-brand-dark bg-opacity-50 flex items-end p-8">
+                        <h1 className="text-white text-4xl font-serif font-bold leading-tight">
+                            Begin Your<br/>Story.
+                        </h1>
                     </div>
-                    <div>
-                        <label htmlFor="email" className="text-sm font-bold text-gray-600 block">Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                </div>
+
+                {/* Right Side: Registration Form */}
+                <div className="w-full md:w-1/2 bg-brand-light p-8 sm:p-12 flex flex-col justify-center">
+                    <div className="w-full max-w-md mx-auto">
+                        <Link to="/" className="text-2xl font-serif text-brand-dark hover:text-brand-accent transition-colors mb-6 block">
+                           Graduation Gallery
+                        </Link>
+
+                        <h2 className="text-3xl font-bold text-brand-dark mb-2">Create an Account</h2>
+                        <p className="text-brand-text mb-8">Join the celebration and share your memories.</p>
+
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div>
+                                <label htmlFor="username" className="text-sm font-semibold text-brand-text block mb-1">Username</label>
+                                <input
+                                    id="username"
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="email" className="text-sm font-semibold text-brand-text block mb-1">Email Address</label>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="password" className="text-sm font-semibold text-brand-text block mb-1">Password</label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                                />
+                            </div>
+
+                            {error && <p className="text-sm text-red-600 text-center bg-red-100 p-2 rounded-md">{error}</p>}
+
+                            <div>
+                                <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-brand-dark hover:bg-black text-white font-semibold rounded-md transition-colors shadow-md">
+                                    <UserPlus size={18} />
+                                    <span>Create Account</span>
+                                </button>
+                            </div>
+                        </form>
+                        <p className="text-sm text-center text-brand-text mt-8">
+                            Already have an account?{' '}
+                            <Link to="/login" className="font-semibold text-brand-accent hover:underline">
+                                Sign In
+                            </Link>
+                        </p>
                     </div>
-                    <div>
-                        <label htmlFor="password" className="text-sm font-bold text-gray-600 block">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                    {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-                    <div>
-                        <button type="submit" className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors">
-                            Sign Up
-                        </button>
-                    </div>
-                </form>
-                <p className="text-sm text-center text-gray-600">
-                    Already have an account?{' '}
-                    <Link to="/login" className="font-medium text-blue-600 hover:underline">
-                        Log in
-                    </Link>
-                </p>
+                </div>
             </div>
         </div>
     );

@@ -173,7 +173,8 @@ class SearchResults(BaseModel):
     users: List[UserSimple]
     photos: List[Image]
 
-
+class UserWithFollowStatus(UserSimple):
+    is_followed_by_current_user: bool = False
 
 # --- Rebuild Models with Forward References ---
 Album.model_rebuild()

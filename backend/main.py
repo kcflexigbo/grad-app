@@ -262,6 +262,47 @@ def change_current_user_password(
     crud.update_user_password(db, user=current_user, new_password=password_data.new_password)
     return
 
+
+@users_router.get("/{username}/followers", response_model=List[schemas.UserWithFollowStatus])
+def get_user_followers_list(
+        username: str,
+        db: Session = Depends(database_manager.get_db),
+        current_user: Optional[models.User] = Depends(security.get_optional_current_user)
+):
+    profile_user = crud.get_user_by_username(db, username=username)
+    if not profile_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    followers = crud.get_user_followers(db, user_id=profile_user.id)
+
+    # Check follow status for each user in the list against the current user
+    if current_user:
+        following_ids = {u.id for u in crud.get_user_following(db, user_id=current_user.id)}
+        for follower in followers:
+            follower.is_followed_by_current_user = follower.id in following_ids
+
+    return followers
+
+
+@users_router.get("/{username}/following", response_model=List[schemas.UserWithFollowStatus])
+def get_user_following_list(
+        username: str,
+        db: Session = Depends(database_manager.get_db),
+        current_user: Optional[models.User] = Depends(security.get_optional_current_user)
+):
+    profile_user = crud.get_user_by_username(db, username=username)
+    if not profile_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    following_list = crud.get_user_following(db, user_id=profile_user.id)
+
+    if current_user:
+        current_user_following_ids = {u.id for u in crud.get_user_following(db, user_id=current_user.id)}
+        for followed_user in following_list:
+            followed_user.is_followed_by_current_user = followed_user.id in current_user_following_ids
+
+    return following_list
+
 # --- Image Endpoints ---
 @images_router.get("", response_model=List[schemas.Image])
 def get_all_images(

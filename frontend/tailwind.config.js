@@ -2,12 +2,22 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}", // <-- This is the most important line
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
-      backgroundImage: {
-        'noise': "url('/noise.svg')",
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        serif: ['Playfair Display', 'serif'],
+      },
+      colors: {
+        'brand-dark': '#212529',
+        'brand-text': '#495057',
+        'brand-light': '#F8F9FA',
+        'brand-accent': {
+          DEFAULT: '#c09a5b', // A sophisticated gold
+          'hover': '#ae8a4f',
+        },
       }
     },
   },
