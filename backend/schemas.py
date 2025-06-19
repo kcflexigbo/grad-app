@@ -26,6 +26,31 @@ class TagCreate(TagBase):
 class Tag(TagBase, BaseSchema):
     id: int
 
+# --- Interaction Schemas (Likes, Comments, Follows) ---
+
+class CommentBase(BaseModel):
+    content: str
+
+class CommentCreate(CommentBase):
+    pass
+
+class Comment(CommentBase, BaseSchema):
+    id: int
+    image_id: int
+    created_at: datetime
+    author: UserSimple
+
+class Like(BaseSchema):
+    user_id: int
+    image_id: int
+    user: UserSimple
+
+class Follow(BaseSchema):
+    follower_id: int
+    following_id: int
+    created_at: datetime
+
+
 # --- Image Schemas ---
 
 class ImageBase(BaseModel):
@@ -45,6 +70,7 @@ class Image(ImageBase, BaseSchema):
     created_at: datetime
     owner: UserSimple
     tags: List[Tag] = []
+    comments: List[Comment] = []
     like_count: int = 0
     comment_count: int = 0
     is_liked_by_current_user: bool = False
@@ -101,29 +127,6 @@ class User(UserBase, BaseSchema):
     is_admin: bool
 
 
-# --- Interaction Schemas (Likes, Comments, Follows) ---
-
-class CommentBase(BaseModel):
-    content: str
-
-class CommentCreate(CommentBase):
-    pass
-
-class Comment(CommentBase, BaseSchema):
-    id: int
-    image_id: int
-    created_at: datetime
-    author: UserSimple
-
-class Like(BaseSchema):
-    user_id: int
-    image_id: int
-    user: UserSimple
-
-class Follow(BaseSchema):
-    follower_id: int
-    following_id: int
-    created_at: datetime
 
 # --- Notification and Report Schemas (Primarily for Reading) ---
 
@@ -142,6 +145,9 @@ class ReportCreate(ReportBase):
     reported_image_id: Optional[int] = None
     reported_comment_id: Optional[int] = None
 
+class ReportStatusUpdate(BaseModel):
+    status: ReportStatus
+
 class Report(ReportBase, BaseSchema):
     id: int
     status: ReportStatus
@@ -149,6 +155,8 @@ class Report(ReportBase, BaseSchema):
     reported_image_id: Optional[int] = None
     reported_comment_id: Optional[int] = None
     created_at: datetime
+
+
 
 # --- Authentication Schemas ---
 
@@ -165,6 +173,10 @@ class SearchResults(BaseModel):
     users: List[UserSimple]
     photos: List[Image]
 
+
+
 # --- Rebuild Models with Forward References ---
 Album.model_rebuild()
 User.model_rebuild()
+
+

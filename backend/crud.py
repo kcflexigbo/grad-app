@@ -39,6 +39,11 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.refresh(db_user)
     return db_user
 
+def get_user_albums(db: Session, user_id: int) -> List[models.Album]:
+    """Retrieves all albums owned by a specific user."""
+    print("me called")
+    return db.query(models.Album).filter(models.Album.owner_id == user_id).all()
+
 
 def update_user(db: Session, db_user: models.User, user_update: schemas.UserUpdate):
     """Updates a user's profile information."""
@@ -65,24 +70,44 @@ def get_image(db: Session, image_id: int):
 
 def get_images(db: Session, sort_by: str = "newest", skip: int = 0, limit: int = 20):
     """
-    Retrieves a paginated list of all images, with different sorting options.
+    Retrieves a paginated list of all images, with different sorting options,
+    and pre-calculates like and comment counts in a single query to avoid the N+1 problem.
     """
-    query = db.query(models.Image)
+    comment_count_subquery = (
+        db.query(
+            models.Comment.image_id,
+            func.count(models.Comment.id).label("comment_count")
+        )
+        .group_by(models.Comment.image_id)
+        .subquery()
+    )
+
+    like_count_subquery = (
+        db.query(
+            models.Like.image_id,
+            func.count(models.Like.user_id).label("like_count")
+        )
+        .group_by(models.Like.image_id)
+        .subquery()
+    )
+
+    query = (
+        db.query(
+            models.Image,
+            func.coalesce(like_count_subquery.c.like_count, 0).label("like_count"),
+            func.coalesce(comment_count_subquery.c.comment_count, 0).label("comment_count")
+        )
+        .outerjoin(like_count_subquery, models.Image.id == like_count_subquery.c.image_id)
+        .outerjoin(comment_count_subquery, models.Image.id == comment_count_subquery.c.image_id)
+    )
 
     if sort_by == "popular":
-        # Join with likes, group by image, and order by the count of likes.
-        # outerjoin is important to include images with 0 likes.
-        query = (
-            query.outerjoin(models.Like)
-            .group_by(models.Image.id)
-            .order_by(func.count(models.Like.user_id).desc())
-        )
+        query = query.order_by(func.coalesce(like_count_subquery.c.like_count, 0).desc())
     elif sort_by == "featured":
-        # Filter for featured images and order them by creation date.
         query = query.filter(models.Image.is_featured == True).order_by(
             models.Image.created_at.desc()
         )
-    else:  # "newest" is the default
+    else:
         query = query.order_by(models.Image.created_at.desc())
 
     return query.offset(skip).limit(limit).all()
@@ -107,6 +132,15 @@ def delete_image(db: Session, image: models.Image):
     db.commit()
     return True
 
+def update_image(db: Session, image: models.Image, image_update: schemas.ImageUpdate) -> models.Image:
+    """Updates an image's data based on the provided schema."""
+    # model_dump(exclude_unset=True) ensures we only update fields that were actually sent
+    update_data = image_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(image, key, value)
+    db.commit()
+    db.refresh(image)
+    return image
 
 # --- Tag CRUD Functions ---
 
@@ -262,10 +296,25 @@ def get_album(db: Session, album_id: int):
     return db.query(models.Album).filter(models.Album.id == album_id).first()
 
 
+# --- NEW: Function to delete an album ---
+def delete_album(db: Session, album: models.Album):
+    """Deletes an album from the database."""
+    db.delete(album)
+    db.commit()
+    return True
+
+
 def add_image_to_album(db: Session, image: models.Image, album: models.Album):
     """Adds an image to an album if it's not already there."""
     if image not in album.images:
         album.images.append(image)
+        db.commit()
+    return album
+
+def remove_image_from_album(db: Session, image: models.Image, album: models.Album):
+    """Removes an image from an album if it is present."""
+    if image in album.images:
+        album.images.remove(image)
         db.commit()
     return album
 

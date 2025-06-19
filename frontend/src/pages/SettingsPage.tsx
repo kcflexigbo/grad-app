@@ -1,47 +1,48 @@
+// C:/Users/kcfle/Documents/React Projects/grad-app/frontend/src/pages/SettingsPage.tsx
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import apiService from '../api/apiService';
 import { Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast'; // <-- Import toast
 
 export const SettingsPage = () => {
     const { user, logout } = useAuth();
     const queryClient = useQueryClient();
 
-    // State for profile form
     const [bio, setBio] = useState(user?.bio || '');
     const [allowDownloads, setAllowDownloads] = useState(user?.allow_downloads ?? true);
-
-    // State for password form
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    // The 'message' state is no longer needed
+    // const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    // Mutation for updating profile details
     const updateProfileMutation = useMutation({
         mutationFn: (updatedData: { bio?: string; allow_downloads?: boolean }) =>
             apiService.put('/users/me', updatedData),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['profile', user?.username] });
             queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            // Replaced setMessage with a success toast
+            toast.success('Profile updated successfully!');
         },
         onError: () => {
-            setMessage({ type: 'error', text: 'Failed to update profile.' });
+            // Replaced setMessage with an error toast
+            toast.error('Failed to update profile.');
         }
     });
 
-    // Mutation for changing password
     const changePasswordMutation = useMutation({
         mutationFn: (passwordData: { old_password: string; new_password: string }) =>
             apiService.post('/users/me/change-password', passwordData),
         onSuccess: () => {
-            setMessage({ type: 'success', text: 'Password changed successfully! Please log in again.' });
-            setTimeout(() => logout(), 2000); // Log out after success
+            toast.success('Password changed successfully! Please log in again.');
+            setTimeout(() => logout(), 2000);
         },
         onError: (err: any) => {
-             setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to change password.' });
+             const errorMsg = err.response?.data?.detail || 'Failed to change password.';
+             toast.error(errorMsg);
         }
     });
 
@@ -62,15 +63,11 @@ export const SettingsPage = () => {
                 <p className="text-lg text-gray-600 mt-2">Manage your profile and account information.</p>
             </header>
 
-            {message && (
-                <div className={`p-4 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {message.text}
-                </div>
-            )}
+            {/* The conditional message div is no longer needed */}
 
-            {/* Profile Information Form */}
             <form onSubmit={handleProfileSubmit} className="p-6 bg-white border rounded-lg space-y-4">
                  <h2 className="text-2xl font-semibold">Edit Profile</h2>
+                 {/* ... form fields remain the same ... */}
                  <div>
                     <label htmlFor="bio" className="block text-sm font-medium text-gray-700">Bio</label>
                     <textarea
@@ -99,7 +96,6 @@ export const SettingsPage = () => {
                 </button>
             </form>
 
-            {/* Change Password Form */}
              <form onSubmit={handlePasswordSubmit} className="p-6 bg-white border rounded-lg space-y-4">
                  <h2 className="text-2xl font-semibold">Change Password</h2>
                  <div>

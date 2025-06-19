@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import apiService from '../api/apiService';
 import type { User } from '../types/user';
 import type { Image } from '../types/image';
 import type { Album } from '../types/album';
-import { Camera, BookCopy } from 'lucide-react';
+import { Camera, BookCopy, Plus, Trash2 } from 'lucide-react';
 
 // Import required components
 import { ImageGrid } from '../components/ImageGrid';
@@ -13,6 +14,7 @@ import { SkeletonLoader as GridSkeletonLoader } from '../components/ui/SkeletonL
 import { FollowButton } from '../components/FollowButton';
 import { useAuth } from '../hooks/useAuth';
 import { ProfilePictureModal } from '../components/ProfilePictureModal';
+import { CreateAlbumModal } from "../components/CreateAlbumModal.tsx";
 
 interface UserProfile extends User {
     images: Image[];
@@ -56,6 +58,7 @@ export const ProfilePage = () => {
     const queryClient = useQueryClient();
 
     const [isPfpModalOpen, setIsPfpModalOpen] = useState(false);
+    const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'photos' | 'albums'>('photos');
 
     const { data: profile, isLoading, isError, error } = useQuery({
@@ -65,6 +68,23 @@ export const ProfilePage = () => {
     });
 
     const isOwnProfile = currentUser?.username === username;
+
+    const deleteAlbumMutation = useMutation({
+        mutationFn: (albumId: number) => apiService.delete(`/albums/${albumId}`),
+        onSuccess: () => {
+            toast.success("Album deleted.");
+            queryClient.invalidateQueries({ queryKey: ['profile', username] });
+        },
+        onError: () => {
+            toast.error("Failed to delete album.");
+        }
+    });
+
+    const handleDeleteAlbum = (albumId: number) => {
+        if (window.confirm("Are you sure you want to permanently delete this album? This cannot be undone.")) {
+            deleteAlbumMutation.mutate(albumId);
+        }
+    };
 
     const handleUploadSuccess = (newImageUrl: string) => {
         queryClient.setQueryData(['profile', username], (oldData: UserProfile | undefined) => {
@@ -171,21 +191,45 @@ export const ProfilePage = () => {
 
                     {/* User's Album Grid Section */}
                     {activeTab === 'albums' && (
-                        profile.albums.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                {profile.albums.map(album => (
-                                    <Link key={album.id} to={`/album/${album.id}`} className="block p-4 bg-white border rounded-lg hover:shadow-lg transition-shadow">
-                                        <h3 className="font-bold text-lg truncate">{album.name}</h3>
-                                        <p className="text-sm text-gray-600 mt-1 truncate">{album.description || 'No description'}</p>
-                                        <p className="text-xs text-gray-400 mt-4">{album.images.length} photos</p>
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : (
-                             <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
-                                This user hasn't created any albums yet.
-                            </div>
-                        )
+                        <div className="space-y-6">
+                            {isOwnProfile && (
+                                <div className="text-right">
+                                    <button
+                                        onClick={() => setIsAlbumModalOpen(true)}
+                                        className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700"
+                                    >
+                                        <Plus size={18} />
+                                        Create New Album
+                                    </button>
+                                </div>
+                            )}
+                            {profile.albums.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                    {profile.albums.map(album => (
+                                        <div key={album.id} className="group relative">
+                                            <Link to={`/album/${album.id}`} className="block p-4 bg-white border rounded-lg hover:shadow-lg transition-shadow">
+                                                <h3 className="font-bold text-lg truncate">{album.name}</h3>
+                                                <p className="text-sm text-gray-600 mt-1 truncate h-10">{album.description || 'No description'}</p>
+                                                <p className="text-xs text-gray-400 mt-4">{album.images.length} photos</p>
+                                            </Link>
+                                            {isOwnProfile && (
+                                                <button
+                                                    onClick={() => handleDeleteAlbum(album.id)}
+                                                    className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-full text-red-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100"
+                                                    title="Delete album"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
+                                    This user hasn't created any albums yet.
+                                </div>
+                            )}
+                        </div>
                     )}
                 </main>
 
@@ -208,6 +252,14 @@ export const ProfilePage = () => {
                     isOwnProfile={isOwnProfile}
                     onUploadSuccess={handleUploadSuccess}
             />
+
+            {isOwnProfile && (
+                <CreateAlbumModal
+                    isOpen={isAlbumModalOpen}
+                    onClose={() => setIsAlbumModalOpen(false)}
+                    username={username!}
+                />
+            )}
     </>
     );
 };

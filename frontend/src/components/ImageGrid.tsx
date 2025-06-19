@@ -4,6 +4,7 @@ import { ImageCard } from './ImageCard';
 
 interface ImageGridProps {
     images: Image[];
+    onRemoveFromAlbum?: (imageId: number) => void;
 }
 
 // Define the breakpoints for the masonry grid
@@ -14,7 +15,7 @@ const breakpointColumnsObj = {
   768: 1,  // On md screens and smaller
 };
 
-export const ImageGrid = ({ images }: ImageGridProps) => {
+export const ImageGrid = ({ images, onRemoveFromAlbum }: ImageGridProps) => {
     return (
         <Masonry
             breakpointCols={breakpointColumnsObj}
@@ -22,7 +23,10 @@ export const ImageGrid = ({ images }: ImageGridProps) => {
             columnClassName="my-masonry-grid_column"
         >
             {images.map((image) => (
-                <ImageCard key={image.id} image={image} />
+                <ImageCard
+                    key={image.id}
+                    image={image}
+                    onRemoveFromAlbum={onRemoveFromAlbum}/>
             ))}
         </Masonry>
     );

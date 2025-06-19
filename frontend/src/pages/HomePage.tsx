@@ -1,21 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInView } from 'react-intersection-observer';
 import { ImageGrid } from '../components/ImageGrid';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import apiService from '../api/apiService';
 import type {Image} from '../types/image';
 import { Loader2 } from 'lucide-react';
 
-// Define the possible sorting options
 type SortOption = 'newest' | 'popular' | 'featured';
-const PAGE_SIZE = 12; // How many images to fetch per "page"
+const PAGE_SIZE = 12;
 
-/**
- * The data-fetching function. It's designed to work with `useInfiniteQuery`.
- * @param pageParam - The offset for the next page, provided by TanStack Query.
- * @param sortBy - The current sort option.
- * @returns An object containing the fetched images and the next page's offset.
- */
 const fetchImages = async ({ pageParam = 0, sortBy }: { pageParam?: number, sortBy: SortOption }) => {
     const { data } = await apiService.get<Image[]>('/images', {
         params: {
@@ -26,14 +20,18 @@ const fetchImages = async ({ pageParam = 0, sortBy }: { pageParam?: number, sort
     });
     return {
         images: data,
-        // Calculate the next page's offset. If we received fewer images than we asked for,
-        // it means we've reached the end, so we return `undefined`.
         nextPage: data.length === PAGE_SIZE ? pageParam + PAGE_SIZE : undefined,
     };
 };
 
 export const HomePage = () => {
     const [sortBy, setSortBy] = useState<SortOption>('newest');
+
+    // --- INFINITE SCROLL SETUP ---
+    // 1. Get the ref and inView state from the hook
+    const { ref, inView } = useInView({
+        threshold: 0.5, // Trigger when 50% of the loader is visible
+    });
 
     const {
         data,
@@ -43,28 +41,24 @@ export const HomePage = () => {
         fetchNextPage,
         isFetchingNextPage,
     } = useInfiniteQuery({
-        // The queryKey is crucial. It includes `sortBy` so that if the sort option
-        // changes, TanStack Query will automatically refetch with a new query.
         queryKey: ['images', sortBy],
-
-        // The query function now receives an object with the pageParam.
         queryFn: ({ pageParam }) => fetchImages({ pageParam, sortBy }),
-
-        // Defines the initial page parameter for the very first fetch.
         initialPageParam: 0,
-
-        // This function tells TanStack Query how to get the `pageParam` for the next page.
-        // It receives the last successfully fetched page and returns the `nextPage` value we calculated.
         getNextPageParam: (lastPage) => lastPage.nextPage,
     });
 
-    // We need to flatten the `pages` array from the `data` object into a single array of images.
+    useEffect(() => {
+        if (inView && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+
     const allImages = data?.pages.flatMap(page => page.images) || [];
 
     const handleSortChange = (newSortOption: SortOption) => {
         if (newSortOption !== sortBy) {
             setSortBy(newSortOption);
-            // TanStack Query will automatically handle the refetch because the queryKey changes.
         }
     };
 
@@ -78,13 +72,11 @@ export const HomePage = () => {
 
     return (
         <div className="space-y-8">
-            {/* Page Header */}
             <header>
                 <h1 className="text-4xl font-bold font-serif text-gray-800 tracking-tight">The Gallery</h1>
                 <p className="text-lg text-gray-600 mt-2">Discover photos from the recent graduation celebration.</p>
             </header>
 
-            {/* Sorting Controls */}
             <div className="flex items-center gap-3">
                 <button onClick={() => handleSortChange('newest')} className={getSortButtonClass('newest')}>
                     Most Recent
@@ -97,46 +89,29 @@ export const HomePage = () => {
                 </button>
             </div>
 
-            {/* Main Content Area */}
             <div>
                 {isLoading && <SkeletonLoader count={12} />}
-
-                {error && (
-                    <div className="text-center text-red-500 py-10 bg-red-50 rounded-lg">
-                        Error: {error.message}
-                    </div>
-                )}
-
+                {error && <div className="text-center text-red-500 py-10 bg-red-50 rounded-lg">Error: {error.message}</div>}
                 {!isLoading && !error && allImages.length === 0 && (
                      <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
                         <h3 className="text-xl font-semibold">It's a bit empty here...</h3>
                         <p>No images found for this category. Be the first to upload!</p>
                     </div>
                 )}
-
                 {allImages.length > 0 && <ImageGrid images={allImages} />}
             </div>
 
-            {/* Load More Button Section */}
-            <div className="flex justify-center mt-12">
-                {hasNextPage && (
-                    <button
-                        onClick={() => fetchNextPage()}
-                        disabled={isFetchingNextPage}
-                        className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-6 rounded-md hover:bg-blue-700 transition-transform transform hover:scale-105 disabled:bg-blue-400 disabled:scale-100"
-                    >
-                        {isFetchingNextPage ? (
-                            <>
-                                <Loader2 className="animate-spin" size={20} />
-                                <span>Loading...</span>
-                            </>
-                        ) : (
-                            <span>Load More</span>
-                        )}
-                    </button>
-                )}
+            <div className="flex justify-center mt-12 h-10">
+                <div ref={ref}>
+                    {isFetchingNextPage && (
+                        <div className="flex items-center gap-2 text-gray-500">
+                            <Loader2 className="animate-spin" size={20} />
+                            <span>Loading more...</span>
+                        </div>
+                    )}
+                </div>
 
-                {!hasNextPage && !isLoading && allImages.length > 0 && (
+                {!hasNextPage && !isLoading && !isFetchingNextPage && allImages.length > 0 && (
                     <p className="text-gray-500">You've reached the end of the gallery!</p>
                 )}
             </div>

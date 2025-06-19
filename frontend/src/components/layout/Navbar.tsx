@@ -1,8 +1,10 @@
+// C:/Users/kcfle/Documents/React Projects/grad-app/frontend/src/components/layout/Navbar.tsx
+
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Bell, Upload, Search } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
-import { Settings } from 'lucide-react';
+// --- MODIFIED: Import more icons and hooks ---
+import { Bell, Upload, Search, Settings, User as UserIcon, LogOut } from 'lucide-react';
+import { useState, type FormEvent, useEffect, useRef } from 'react';
 
 interface NavbarProps {
     onUploadClick: () => void;
@@ -10,10 +12,14 @@ interface NavbarProps {
 }
 
 export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
-    // This hook will provide the authentication state once AuthContext is implemented
-    const { isLoggedIn, user } = useAuth();
+    // --- MODIFIED: Get the logout function from the auth hook ---
+    const { isLoggedIn, user, logout } = useAuth();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
+
+    // --- NEW: State and ref for the profile dropdown ---
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown container
 
     const handleSearchSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -23,7 +29,26 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
         }
     };
 
-    // Active link style for NavLink
+    // --- NEW: Effect to handle clicks outside the dropdown to close it ---
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+
+        // Add event listener when the dropdown is open
+        if (isDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        // Cleanup function to remove the event listener
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isDropdownOpen]);
+
+
     const activeLinkStyle = {
         textDecoration: 'underline',
         textUnderlineOffset: '4px'
@@ -40,7 +65,7 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                         </Link>
                     </div>
 
-                    {/* Center: Search Bar (Placeholder) */}
+                    {/* Center: Search Bar */}
                     <div className="hidden md:block w-full max-w-md">
                         <form onSubmit={handleSearchSubmit} className="relative">
                             <input
@@ -61,7 +86,6 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                         {isLoggedIn && user ? (
                             // --- Authenticated User View ---
                             <>
-                                {/* ... Upload button ... */}
                                 <button
                                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                                     onClick={onUploadClick}
@@ -77,17 +101,49 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                                         </span>
                                     )}
                                 </Link>
-                                <div className="flex items-center space-x-2">
-                                    <Link to="/settings" className="p-2 rounded-full hover:bg-gray-100" title="Settings">
-                                        <Settings size={20} className="text-gray-600" />
-                                    </Link>
-                                    <Link to={`/profile/${user.username}`}>
+
+                                {/* --- MODIFIED: Profile Picture now triggers a dropdown --- */}
+                                <div className="relative" ref={dropdownRef}>
+                                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
                                         <img
                                             src={user.profile_picture_url || 'https://via.placeholder.com/40'}
                                             alt={`${user.username}'s profile`}
                                             className="h-10 w-10 rounded-full object-cover border-2 border-transparent hover:border-blue-500"
                                         />
-                                    </Link>
+                                    </button>
+
+                                    {/* --- NEW: The Dropdown Menu --- */}
+                                    {isDropdownOpen && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5">
+                                            <Link
+                                                to={`/profile/${user.username}`}
+                                                onClick={() => setIsDropdownOpen(false)}
+                                                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                                <UserIcon size={16} />
+                                                <span>My Profile</span>
+                                            </Link>
+                                            <Link
+                                                to="/settings"
+                                                onClick={() => setIsDropdownOpen(false)}
+                                                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                                <Settings size={16} />
+                                                <span>Settings</span>
+                                            </Link>
+                                            <div className="border-t border-gray-100 my-1"></div>
+                                            <button
+                                                onClick={() => {
+                                                    logout();
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                            >
+                                                <LogOut size={16} />
+                                                <span>Logout</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         ) : (
