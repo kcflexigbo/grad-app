@@ -44,6 +44,60 @@ def get_user_albums(db: Session, user_id: int) -> List[models.Album]:
     print("me called")
     return db.query(models.Album).filter(models.Album.owner_id == user_id).all()
 
+#--- Leaderboard CRUD Functions ---
+def get_top_liked_photos(db: Session, limit: int = 10):
+    """
+    Retrieves a list of the most liked photos.
+    This reuses the logic from get_images with a specific sort and limit.
+    """
+    comment_count_subquery = (
+        db.query(
+            models.Comment.image_id,
+            func.count(models.Comment.id).label("comment_count")
+        )
+        .group_by(models.Comment.image_id)
+        .subquery()
+    )
+
+    like_count_subquery = (
+        db.query(
+            models.Like.image_id,
+            func.count(models.Like.user_id).label("like_count")
+        )
+        .group_by(models.Like.image_id)
+        .subquery()
+    )
+
+    query = (
+        db.query(
+            models.Image,
+            func.coalesce(like_count_subquery.c.like_count, 0).label("like_count"),
+            func.coalesce(comment_count_subquery.c.comment_count, 0).label("comment_count")
+        )
+        .outerjoin(like_count_subquery, models.Image.id == like_count_subquery.c.image_id)
+        .outerjoin(comment_count_subquery, models.Image.id == comment_count_subquery.c.image_id)
+        .order_by(func.coalesce(like_count_subquery.c.like_count, 0).desc())
+    )
+
+    return query.limit(limit).all()
+
+
+def get_most_followed_users(db: Session, limit: int = 10):
+    """
+    Retrieves a list of the most followed users.
+    """
+    return (
+        db.query(
+            models.User,
+            func.count(models.Follow.follower_id).label("followers_count")
+        )
+        .outerjoin(models.Follow, models.User.id == models.Follow.following_id)
+        .group_by(models.User.id)
+        .order_by(func.count(models.Follow.follower_id).desc())
+        .limit(limit)
+        .all()
+    )
+
 
 def update_user(db: Session, db_user: models.User, user_update: schemas.UserUpdate):
     """Updates a user's profile information."""

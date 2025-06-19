@@ -27,6 +27,7 @@ import { AlbumDetailPage } from './pages/AlbumDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { LeaderboardPage } from "./pages/LeaderboardPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -126,6 +127,7 @@ function App() {
                             <Route path="settings" element={<SettingsPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                            <Route path="/leaderboard" element={<LeaderboardPage />} />
                         </Route>
 
                         <Route path="/login" element={<LoginPage />} />

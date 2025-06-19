@@ -15,7 +15,6 @@ from slowapi.errors import RateLimitExceeded
 import crud, models, schemas, security, database_manager, oss_manager
 from connection_manager import manager
 
-# --- MODIFIED: Initialize the rate limiter ---
 limiter = Limiter(key_func=get_remote_address)
 
 # Create all tables in the database (if they don't exist)
@@ -39,6 +38,7 @@ albums_router = APIRouter(prefix="/albums", tags=["Albums"])
 notifications_router = APIRouter(prefix="/notifications", tags=["Notifications"])
 reports_router = APIRouter(prefix="/reports", tags=["Reports"])
 admin_router = APIRouter(prefix="/admin", tags=["Administration"])
+leaderboard_router = APIRouter(prefix="/leaderboard", tags=["Leaderboard"])
 # --- CORS Configuration ---
 origins = [
     "http://localhost:5173",
@@ -64,15 +64,16 @@ async def healthz() -> Dict[str, str]:
     return {"status": "OK"}
 
 @app.websocket("/ws/notifications")
-async def websocket_endpoint(
+async def websocket_notifications_endpoint(
     websocket: WebSocket,
     token: str,
     db: Session = Depends(database_manager.get_db)
 ):
+    """Handles WebSocket connections for personal user notifications."""
     try:
         current_user = security.get_current_user(token=token, db=db)
         user_id = current_user.id
-        await manager.connect(user_id, websocket)
+        await manager.connect(user_id, websocket) # Uses the personal connection method
         try:
             while True:
                 await websocket.receive_text()
@@ -80,6 +81,20 @@ async def websocket_endpoint(
             manager.disconnect(user_id)
     except Exception:
         await websocket.close()
+
+
+# --- NEW: WebSocket Endpoint for Live Comments ---
+@app.websocket("/ws/comments/{image_id}")
+async def websocket_comments_endpoint(websocket: WebSocket, image_id: int):
+    """Handles WebSocket connections for live comment rooms."""
+    room_name = f"image-{image_id}"
+    await manager.connect_to_room(room_name, websocket)
+    try:
+        while True:
+            # Keep the connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect_from_room(room_name, websocket)
 
 # --- Authentication Endpoints ---
 @auth_router.post("/register", response_model=schemas.User)
@@ -393,9 +408,13 @@ async def post_comment_on_image(
 ):
     image = crud.get_image(db, image_id=image_id)
     if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
+        raise HTTPException(status_code=status.HTTP_404, detail="Image not found")
 
     db_comment = crud.create_comment(db=db, comment=comment, image_id=image_id, author_id=current_user.id)
+
+    room_name = f"image-{image_id}"
+    new_comment_schema = schemas.Comment.model_validate(db_comment)
+    await manager.broadcast_to_room(room_name, new_comment_schema.model_dump_json())
 
     db_notification = crud.create_notification(
         db,
@@ -657,6 +676,31 @@ def delete_comment_by_admin(
     crud.delete_comment(db, comment=comment)
     return
 
+# --- Leaderboard Endpoints ---
+@leaderboard_router.get("/photos", response_model=List[schemas.Image])
+def get_leaderboard_photos(limit: int = 10, db: Session = Depends(database_manager.get_db)):
+    """ Gets the top N most liked photos. """
+    results = crud.get_top_liked_photos(db=db, limit=limit)
+    images_with_counts = []
+    for image, like_count, comment_count in results:
+        image.like_count = like_count
+        image.comment_count = comment_count
+        images_with_counts.append(image)
+    return images_with_counts
+
+@leaderboard_router.get("/users", response_model=List[schemas.User])
+def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manager.get_db)):
+    """ Gets the top N most followed users. """
+    results = crud.get_most_followed_users(db=db, limit=limit)
+    # Process the results to correctly populate the follower count in the schema
+    user_list = []
+    for user, followers_count in results:
+        user.followers_count = followers_count
+        # You might need to fetch following_count separately if you want to display it
+        user.following_count = crud.get_following_count_for_user(db, user_id=user.id)
+        user_list.append(user)
+    return user_list
+
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(images_router)
@@ -666,3 +710,4 @@ app.include_router(albums_router)
 app.include_router(notifications_router)
 app.include_router(reports_router)
 app.include_router(admin_router)
+app.include_router(leaderboard_router)

@@ -24,8 +24,8 @@ export const CommentForm = ({ imageId, onCommentPosted }: CommentFormProps) => {
         setIsSubmitting(true);
         try {
             const response = await apiService.post<Comment>(`/images/${imageId}/comments`, { content });
-            onCommentPosted(response.data); // Notify parent component
-            setContent(''); // Clear the form
+            onCommentPosted(response.data);
+            setContent('');
         } catch (error) {
             console.error('Failed to post comment:', error);
         } finally {

@@ -1,16 +1,16 @@
-// C:/Users/kcfle/Documents/React Projects/grad-app/frontend/src/components/CommentList.tsx
 import { Link } from 'react-router-dom';
 import type { Comment } from '../types/comments';
 import type { User } from '../types/user';
-import { X } from 'lucide-react';
+import { X, Flag } from 'lucide-react';
 
 interface CommentListProps {
     comments: Comment[];
     currentUser: User | null;
     onDeleteComment: (commentId: number) => void;
+    onReportComment: (commentId: number) => void;
 }
 
-export const CommentList = ({ comments, currentUser, onDeleteComment }: CommentListProps) => {
+export const CommentList = ({ comments, currentUser, onDeleteComment, onReportComment }: CommentListProps) => {
     if (!comments || comments.length === 0) {
         return <p className="text-sm text-gray-500 mt-4">No comments yet.</p>;
     }
@@ -24,8 +24,9 @@ export const CommentList = ({ comments, currentUser, onDeleteComment }: CommentL
     return (
         <div className="space-y-4 mt-6">
             {comments.map((comment) => {
-                // Determine if the delete button should be visible
-                const canDelete = currentUser && (currentUser.id === comment.author.id || currentUser.is_admin);
+                const isAuthor = currentUser?.id === comment.author.id;
+                const canDelete = currentUser && (isAuthor || currentUser.is_admin);
+                const canReport = currentUser && !isAuthor;
 
                 return (
                     <div key={comment.id} className="flex items-start gap-3 group">
@@ -47,15 +48,26 @@ export const CommentList = ({ comments, currentUser, onDeleteComment }: CommentL
                                 {new Date(comment.created_at).toLocaleDateString()}
                             </p>
                         </div>
-                        {canDelete && (
-                            <button
-                                onClick={() => handleDelete(comment.id)}
-                                className="p-1 rounded-full text-gray-400 hover:bg-red-100 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Delete comment"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
+                        <div className="flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            {canDelete && (
+                                <button
+                                    onClick={() => handleDelete(comment.id)}
+                                    className="p-1 rounded-full text-gray-400 hover:bg-red-100 hover:text-red-600"
+                                    title="Delete comment"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                            {canReport && (
+                                <button
+                                     onClick={() => onReportComment(comment.id)}
+                                     className="p-1 rounded-full text-gray-400 hover:bg-yellow-100 hover:text-yellow-600"
+                                     title="Report comment"
+                                >
+                                    <Flag size={16} />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 );
             })}

@@ -2,7 +2,6 @@
 
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-// --- MODIFIED: Import more icons and hooks ---
 import { Bell, Upload, Search, Settings, User as UserIcon, LogOut } from 'lucide-react';
 import { useState, type FormEvent, useEffect, useRef } from 'react';
 
@@ -59,9 +58,12 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
             <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Left Side: Logo */}
-                    <div className="flex-shrink-0">
+                    <div className="flex items-center gap-6">
                         <Link to="/" className="text-2xl font-serif text-gray-800 hover:text-gray-900">
                             Graduation Gallery
+                        </Link>
+                        <Link to="/leaderboard" className="hidden sm:block text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
+                            Leaderboard
                         </Link>
                     </div>
 
