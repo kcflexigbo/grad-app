@@ -360,6 +360,7 @@ def get_image_by_id(
 
     db_image.like_count = crud.get_like_count_for_image(db, image_id=image_id)
     db_image.comment_count = crud.get_comment_count_for_image(db, image_id=image_id)
+
     is_liked = False
     if current_user:
         like = crud.get_like(db, user_id=current_user.id, image_id=image_id)

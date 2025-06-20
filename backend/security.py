@@ -20,13 +20,13 @@ if not JWT_SECRET_KEY:
 
 SECRET_KEY = JWT_SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Token validity period
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # Token validity period
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # --- OAuth2 Scheme ---
 # This tells FastAPI which URL to use to get the token.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
