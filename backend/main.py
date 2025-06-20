@@ -46,6 +46,8 @@ origins = [
     "http://localhost:4173",
     "http://127.0.0.1:4173",
     "https://ratemypic-eight.vercel.app",
+    "https://ratemypix.cn",
+    "https://www.ratemypix.cn"
 ]
 app.add_middleware(
     CORSMiddleware,
