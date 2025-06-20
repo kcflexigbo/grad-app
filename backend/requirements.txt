@@ -5,9 +5,10 @@ uvicorn
 gunicorn
 psycopg2-binary
 sqlalchemy
+passlib[bcrypt]
 passlib
 email-validator
-passlib[bcrypt]
+bcrypt==4.0.1
 python-jose[cryptography]
 python-multipart
 boto3

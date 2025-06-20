@@ -1,4 +1,3 @@
-# C:/Users/kcfle/Documents/React Projects/grad-app/backend/crud.py
 from typing import List
 
 from sqlalchemy.orm import Session, contains_eager

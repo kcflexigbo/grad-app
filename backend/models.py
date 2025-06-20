@@ -1,4 +1,3 @@
-# C:/Users/kcfle/Documents/React Projects/grad-app/backend/models.py
 from sqlalchemy import (
     create_engine, Column, Integer, String, Text, Boolean, DateTime,
     ForeignKey, Table, Enum as PyEnum

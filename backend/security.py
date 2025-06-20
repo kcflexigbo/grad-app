@@ -1,4 +1,3 @@
-# backend/security.py
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -14,7 +13,6 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path="../.env")
 
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-
 if not JWT_SECRET_KEY:
     raise Exception("JWT_SECRET_KEY environment variable not set")
 
