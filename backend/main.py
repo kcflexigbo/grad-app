@@ -48,6 +48,11 @@ origins = [
     "https://ratemypic-eight.vercel.app",
     "https://ratemypix.cn",
     "https://www.ratemypix.cn"
+    "https://www.ratemygradpix.xin",
+    "http://www.ratemygradpix.xin",
+    "https://ratemygradpix.xin",
+    "http://ratemygradpix.xin",
+
 ]
 app.add_middleware(
     CORSMiddleware,
