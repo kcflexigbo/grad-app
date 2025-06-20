@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent, useEffect } from 'react';
 import { X, UploadCloud, Loader2 } from 'lucide-react';
 import apiService from '../api/apiService';
+import imageCompression from 'browser-image-compression';
 
 interface UploadModalProps {
     isOpen: boolean;
@@ -9,6 +10,9 @@ interface UploadModalProps {
 }
 
 export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalProps) => {
+    const [originalFile, setOriginalFile] = useState<File | null>(null); // <-- Keep track of the original file for preview
+    const [compressedFile, setCompressedFile] = useState<File | null>(null);
+    const [isCompressing, setIsCompressing] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [caption, setCaption] = useState('');
@@ -18,30 +22,51 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
 
     // Effect to create a preview URL when a file is selected
     useEffect(() => {
-        if (!file) {
+        if (!originalFile) {
             setPreviewUrl(null);
             return;
         }
-        const objectUrl = URL.createObjectURL(file);
+        const objectUrl = URL.createObjectURL(originalFile);
         setPreviewUrl(objectUrl);
-
-        // Cleanup function to revoke the object URL to prevent memory leaks
         return () => URL.revokeObjectURL(objectUrl);
-    }, [file]);
+    }, [originalFile]);
 
     if (!isOpen) return null;
 
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+            const file = e.target.files[0];
+            setOriginalFile(file);
             setError(null);
+            setIsCompressing(true);
+
+            // --- Compression Logic ---
+            const options = {
+                maxSizeMB: 2,          // Max file size 2MB
+                maxWidthOrHeight: 1920, // Max dimensions
+                useWebWorker: true,
+            };
+            try {
+                const compressed = await imageCompression(file, options);
+                setCompressedFile(compressed);
+            } catch (error) {
+                console.error("Image compression error:", error);
+                setError("Could not process image. Please try another one.");
+                setCompressedFile(null); // Fallback
+            } finally {
+                setIsCompressing(false);
+            }
         }
     };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!file) {
+        if (!compressedFile) { // <-- Check for the compressed file
             setError('Please select an image to upload.');
+            return;
+        }
+        if(isCompressing) {
+            setError('Please wait for the image to finish processing.');
             return;
         }
 
@@ -49,7 +74,7 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
         setError(null);
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', compressedFile);
         formData.append('caption', caption);
         // Assuming your backend expects a comma-separated string for tags
         formData.append('tags', tags);
