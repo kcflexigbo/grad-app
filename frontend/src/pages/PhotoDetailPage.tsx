@@ -16,6 +16,7 @@ import { AddToAlbumModal } from '../components/AddToAlbumModal';
 import { ReportModal } from '../components/ReportModal';
 import type { Image as ImageType } from '../types/image';
 import type { Comment as CommentType } from '../types/comments';
+import {WS_URL} from "../api/config.ts";
 
 
 // Define the detailed image type returned by the API for this page
@@ -61,7 +62,7 @@ export const PhotoDetailPage = () => {
         }
     }, [image]);
 
-    const wsUrl = image ? `ws://127.0.0.1:8000/ws/comments/${image.id}` : null;
+    const wsUrl = image ? `${WS_URL}/ws/comments/${image.id}` : null;
     const { lastMessage } = useWebSocket<CommentType>(wsUrl);
 
     useEffect(() => {

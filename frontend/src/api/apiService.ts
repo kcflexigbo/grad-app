@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from './config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// const API_URL = API_URL || 'http://localhost:8000';
 
 const apiService = axios.create({
     baseURL: API_URL,

@@ -25,10 +25,14 @@ export const FollowListPage = () => {
     const { data: users, isLoading, isError } = useQuery({
         queryKey: ['followList', username, mode],
         queryFn: () => fetchFollowData(username!, mode!),
-        enabled: !!username && !!mode,
+        enabled: !!username && username !== 'string' && !!mode,
     });
 
     const pageTitle = mode === 'followers' ? 'Followers' : 'Following';
+
+    if (!username || username === 'string') {
+        return <div>Loading user information...</div>;
+    }
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">

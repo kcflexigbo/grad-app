@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import {QueryClient, QueryClientProvider, useQuery, useQueryClient} from '@tanstack/react-query';
 import { useAuth } from './hooks/useAuth';
 import { useWebSocket } from './hooks/useWebSocket';
+import { WS_URL } from './api/config';
 
 // Types
 import type { Notification as NotificationType } from './types/notification';
@@ -58,7 +59,7 @@ const AppLayout = () => {
     }, [response]);
 
     const token = localStorage.getItem('accessToken');
-    const wsUrl = isLoggedIn ? `ws://127.0.0.1:8000/ws/notifications?token=${token}` : null;
+    const wsUrl = isLoggedIn ? `${WS_URL}/ws/notifications?token=${token}` : null;
     const { lastMessage } = useWebSocket<NotificationType>(wsUrl);
 
     useEffect(() => {
