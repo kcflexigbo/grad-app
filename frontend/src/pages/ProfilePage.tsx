@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import apiService from '../api/apiService';
 import type { User } from '../types/user';
 import type { Image } from '../types/image';
-import type { Album } from '../types/album';
+// import type { Album } from '../types/album'; // No longer need the full album type here
 import { Camera, BookCopy, Plus, Trash2 } from 'lucide-react';
 
 // Import required components
@@ -16,11 +16,20 @@ import { useAuth } from '../hooks/useAuth';
 import { ProfilePictureModal } from '../components/ProfilePictureModal';
 import { CreateAlbumModal } from "../components/CreateAlbumModal.tsx";
 
+// --- MODIFICATION: New interface for the album summary ---
+interface AlbumSummary {
+    id: number;
+    name: string;
+    description: string | null;
+    image_count: number;
+}
+
+
 interface UserProfile extends User {
     images: Image[];
     followers_count: number;
     following_count: number;
-    albums: Album[];
+    albums: AlbumSummary[];
     is_followed_by_current_user?: boolean;
 }
 
@@ -220,7 +229,8 @@ export const ProfilePage = () => {
                                             <Link to={`/album/${album.id}`} className="block p-4 bg-white border rounded-lg hover:shadow-lg transition-shadow">
                                                 <h3 className="font-bold text-lg truncate">{album.name}</h3>
                                                 <p className="text-sm text-gray-600 mt-1 truncate h-10">{album.description || 'No description'}</p>
-                                                <p className="text-xs text-gray-400 mt-4">{album.images.length} photos</p>
+                                                {/* --- MODIFICATION: Use the new image_count property --- */}
+                                                <p className="text-xs text-gray-400 mt-4">{album.image_count} photos</p>
                                             </Link>
                                             {isOwnProfile && (
                                                 <button

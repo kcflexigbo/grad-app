@@ -1,3 +1,4 @@
+// C:/Users/kcfle/Documents/React Projects/grad-app/frontend/src/components/layout/Navbar.tsx
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Bell, Upload, Search, Settings, User as UserIcon, LogOut, Crown } from 'lucide-react';
@@ -37,31 +38,37 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
         <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-50">
             <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
-                    <div className="flex items-center gap-6">
-                        <Link to="/" className="text-2xl font-serif text-brand-dark hover:text-brand-accent transition-colors">
-                            Graduation Gallery
+                    {/* --- MODIFICATION: Responsive left side of navbar --- */}
+                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                        <Link to="/" className="flex items-center gap-2 group">
+                             <img src="/logo.png" alt="Logo" className="h-8 w-8" />
+                             <span className="hidden sm:block text-xl font-serif text-brand-dark group-hover:text-brand-accent transition-colors whitespace-nowrap">
+                                Graduation Gallery
+                            </span>
                         </Link>
-                        <Link to="/leaderboard" className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-brand-accent transition-colors">
-                            <Crown size={16} />
-                            <span>Leaderboard</span>
+                        <Link to="/leaderboard" className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-brand-accent transition-colors" title="Leaderboard">
+                            <Crown size={18} />
+                            <span className="hidden sm:inline">Leaderboard</span>
                         </Link>
                     </div>
 
-                    <div className="hidden md:block w-full max-w-md">
+                    {/* --- MODIFICATION: Responsive search bar --- */}
+                    <div className="hidden md:block w-full max-w-xs lg:max-w-md px-4">
                         <form onSubmit={handleSearchSubmit} className="relative">
-                            <input type="search" placeholder="Search for photos or users..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent" />
+                            <input type="search" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent text-sm" />
                             <div className="absolute top-0 left-0 flex items-center h-full pl-3">
-                                <Search size={20} className="text-gray-400" />
+                                <Search size={18} className="text-gray-400" />
                             </div>
                         </form>
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    {/* --- MODIFICATION: Responsive right side of navbar --- */}
+                    <div className="flex items-center space-x-2 sm:space-x-3">
                         {isLoggedIn && user ? (
                             <>
-                                <button className="flex items-center gap-2 bg-brand-accent text-white px-4 py-2 rounded-md hover:bg-brand-accent-hover transition-colors font-semibold" onClick={onUploadClick}>
+                                <button className="flex items-center gap-1.5 bg-brand-accent text-white px-3 py-2 sm:px-4 rounded-md hover:bg-brand-accent-hover transition-colors font-semibold" onClick={onUploadClick}>
                                     <Upload size={18} />
-                                    <span>Upload</span>
+                                    <span className="hidden sm:inline text-sm">Upload</span>
                                 </button>
                                 <Link to="/notifications" className="relative p-2 rounded-full hover:bg-gray-100">
                                     <Bell size={20} className="text-gray-600" />
@@ -74,7 +81,7 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
 
                                 <div className="relative" ref={dropdownRef}>
                                     <button onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                                        <img src={user.profile_picture_url || 'https://via.placeholder.com/40'} alt={`${user.username}'s profile`} className="h-10 w-10 rounded-full object-cover border-2 border-transparent hover:border-brand-accent transition-all" />
+                                        <img src={user.profile_picture_url || 'https://via.placeholder.com/40'} alt={`${user.username}'s profile`} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-transparent hover:border-brand-accent transition-all" />
                                     </button>
 
                                     {isDropdownOpen && (
@@ -88,9 +95,9 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                                 </div>
                             </>
                         ) : (
-                            <div className="space-x-2">
+                            <div className="space-x-1 sm:space-x-2 whitespace-nowrap">
                                 <NavLink to="/login" className="text-gray-700 hover:text-brand-accent px-3 py-2 rounded-md text-sm font-medium transition-colors">Login</NavLink>
-                                <NavLink to="/register" className="bg-brand-dark text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-black transition-colors">Sign Up</NavLink>
+                                <NavLink to="/register" className="bg-brand-dark text-white px-3 sm:px-4 py-2 rounded-md text-sm font-medium hover:bg-black transition-colors">Sign Up</NavLink>
                             </div>
                         )}
                     </div>

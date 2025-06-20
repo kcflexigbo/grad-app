@@ -94,6 +94,13 @@ class Album(AlbumBase, BaseSchema):
     owner: UserSimple
     images: List['Image'] = []
 
+# --- MODIFICATION: New schema for efficient album listing ---
+class AlbumWithImageCount(AlbumBase, BaseSchema):
+    id: int
+    owner: UserSimple
+    image_count: int = 0
+
+
 # --- User Schemas ---
 
 class UserBase(BaseModel):
@@ -120,12 +127,15 @@ class User(UserBase, BaseSchema):
     allow_downloads: bool
     created_at: datetime
     images: List[Image] = []
-    albums: List['Album'] = []
+    albums: List['Album'] = [] # This remains for other potential uses
     followers_count: int = 0
     following_count: int = 0
     is_followed_by_current_user: bool = False
     is_admin: bool
 
+# --- MODIFICATION: New response model for the profile page ---
+class UserProfile(User, BaseSchema):
+    albums: List[AlbumWithImageCount] = []
 
 
 # --- Notification and Report Schemas (Primarily for Reading) ---
@@ -179,5 +189,4 @@ class UserWithFollowStatus(UserSimple):
 # --- Rebuild Models with Forward References ---
 Album.model_rebuild()
 User.model_rebuild()
-
-
+UserProfile.model_rebuild()

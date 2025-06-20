@@ -151,7 +151,7 @@ def get_my_albums(
     return crud.get_user_albums(db, user_id=current_user.id)
 
 
-@users_router.get("/profile/{username}", response_model=schemas.User)
+@users_router.get("/profile/{username}", response_model=schemas.UserProfile)
 def get_user_profile(
         username: str,
         db: Session = Depends(database_manager.get_db),
@@ -161,15 +161,20 @@ def get_user_profile(
     if profile_user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Calculate follower/following counts
     profile_user.followers_count = crud.get_follower_count_for_user(db, user_id=profile_user.id)
     profile_user.following_count = crud.get_following_count_for_user(db, user_id=profile_user.id)
 
+    # Calculate follow status for the current user
     is_following = False
     if current_user and current_user.id != profile_user.id:
         follow_rel = crud.get_follow(db, follower_id=current_user.id, following_id=profile_user.id)
         if follow_rel:
             is_following = True
     profile_user.is_followed_by_current_user = is_following
+
+    for album in profile_user.albums:
+        album.image_count = len(album.images)
 
     return profile_user
 
