@@ -38,7 +38,7 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
         <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-50">
             <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
-                    {/* --- MODIFICATION: Responsive left side of navbar --- */}
+                    {/* --- Left side of navbar (Unchanged) --- */}
                     <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                         <Link to="/" className="flex items-center gap-2 group">
                              <img src="/logo.png" alt="Logo" className="h-8 w-8" />
@@ -52,8 +52,8 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                         </Link>
                     </div>
 
-                    {/* --- MODIFICATION: Responsive search bar --- */}
-                    <div className="hidden md:block w-full max-w-xs lg:max-w-md px-4">
+                    {/* --- MODIFICATION: Made search bar visible and flexible on all screen sizes --- */}
+                    <div className="flex-grow w-full max-w-xs lg:max-w-md px-2 sm:px-4">
                         <form onSubmit={handleSearchSubmit} className="relative">
                             <input type="search" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent text-sm" />
                             <div className="absolute top-0 left-0 flex items-center h-full pl-3">
@@ -62,8 +62,8 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                         </form>
                     </div>
 
-                    {/* --- MODIFICATION: Responsive right side of navbar --- */}
-                    <div className="flex items-center space-x-2 sm:space-x-3">
+                    {/* --- MODIFICATION: Added shrink-0 to prevent this section from being squished --- */}
+                    <div className="flex items-center shrink-0 space-x-2 sm:space-x-3">
                         {isLoggedIn && user ? (
                             <>
                                 <button className="flex items-center gap-1.5 bg-brand-accent text-white px-3 py-2 sm:px-4 rounded-md hover:bg-brand-accent-hover transition-colors font-semibold" onClick={onUploadClick}>
