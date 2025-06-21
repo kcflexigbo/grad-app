@@ -39,20 +39,17 @@ notifications_router = APIRouter(prefix="/notifications", tags=["Notifications"]
 reports_router = APIRouter(prefix="/reports", tags=["Reports"])
 admin_router = APIRouter(prefix="/admin", tags=["Administration"])
 leaderboard_router = APIRouter(prefix="/leaderboard", tags=["Leaderboard"])
-# --- CORS Configuration ---
+
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:4173",
     "http://127.0.0.1:4173",
     "https://ratemypic-eight.vercel.app",
-    "https://ratemypix.cn",
-    "https://www.ratemypix.cn"
+    # "https://ratemypix.cn",
+    # "https://www.ratemypix.cn"
     "https://www.ratemygradpix.xin",
-    "http://www.ratemygradpix.xin",
     "https://ratemygradpix.xin",
-    "http://ratemygradpix.xin",
-
 ]
 app.add_middleware(
     CORSMiddleware,
