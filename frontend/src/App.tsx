@@ -30,6 +30,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { LeaderboardPage } from "./pages/LeaderboardPage.tsx";
 import { FollowListPage } from './pages/FollowListPage.tsx';
+import { AdminReportsHistoryPage } from './pages/AdminReportsHistoryPage.tsx';
 
 const queryClient = new QueryClient();
 
@@ -132,6 +133,7 @@ function App() {
                             <Route path="settings" element={<SettingsPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
                             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                            <Route path="/admin/reports/history" element={<AdminReportsHistoryPage />} />
                             <Route path="/leaderboard" element={<LeaderboardPage />} />
                             <Route path="/profile/:username/:mode" element={<FollowListPage />} />
                         </Route>

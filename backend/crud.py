@@ -1,8 +1,10 @@
-from typing import List
+from typing import List, Dict, Any, Optional
 
 from sqlalchemy.orm import Session, contains_eager
 from sqlalchemy import func, or_
 import schemas, security, models
+
+
 # --- User CRUD Functions ---
 
 def get_user(db: Session, user_id: int):
@@ -38,12 +40,14 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.refresh(db_user)
     return db_user
 
+
 def get_user_albums(db: Session, user_id: int) -> List[models.Album]:
     """Retrieves all albums owned by a specific user."""
     print("me called")
     return db.query(models.Album).filter(models.Album.owner_id == user_id).all()
 
-#--- Leaderboard CRUD Functions ---
+
+# --- Leaderboard CRUD Functions ---
 def get_top_liked_photos(db: Session, limit: int = 10):
     """
     Retrieves a list of the most liked photos.
@@ -97,13 +101,18 @@ def get_most_followed_users(db: Session, limit: int = 10):
         .all()
     )
 
+
 def get_user_followers(db: Session, user_id: int) -> List[models.User]:
     """Retrieves a list of users who follow the given user."""
-    return db.query(models.User).join(models.Follow, models.User.id == models.Follow.follower_id).filter(models.Follow.following_id == user_id).all()
+    return db.query(models.User).join(models.Follow, models.User.id == models.Follow.follower_id).filter(
+        models.Follow.following_id == user_id).all()
+
 
 def get_user_following(db: Session, user_id: int) -> List[models.User]:
     """Retrieves a list of users the given user is following."""
-    return db.query(models.User).join(models.Follow, models.User.id == models.Follow.following_id).filter(models.Follow.follower_id == user_id).all()
+    return db.query(models.User).join(models.Follow, models.User.id == models.Follow.following_id).filter(
+        models.Follow.follower_id == user_id).all()
+
 
 def update_user(db: Session, db_user: models.User, user_update: schemas.UserUpdate):
     """Updates a user's profile information."""
@@ -113,6 +122,7 @@ def update_user(db: Session, db_user: models.User, user_update: schemas.UserUpda
     db.commit()
     db.refresh(db_user)
     return db_user
+
 
 def update_user_password(db: Session, user: models.User, new_password: str):
     """Hashes and updates a user's password."""
@@ -192,6 +202,7 @@ def delete_image(db: Session, image: models.Image):
     db.commit()
     return True
 
+
 def update_image(db: Session, image: models.Image, image_update: schemas.ImageUpdate) -> models.Image:
     """Updates an image's data based on the provided schema."""
     # model_dump(exclude_unset=True) ensures we only update fields that were actually sent
@@ -201,6 +212,7 @@ def update_image(db: Session, image: models.Image, image_update: schemas.ImageUp
     db.commit()
     db.refresh(image)
     return image
+
 
 # --- Tag CRUD Functions ---
 
@@ -313,7 +325,8 @@ def delete_follow(db: Session, follow: models.Follow):
     return True
 
 
-def create_notification(db: Session, recipient_id: int, actor_id: int, type: models.NotificationType, related_entity_id: int):
+def create_notification(db: Session, recipient_id: int, actor_id: int, type: models.NotificationType,
+                        related_entity_id: int):
     """Creates a notification for a user action."""
     # Avoid creating a notification if a user interacts with their own content
     if recipient_id == actor_id:
@@ -329,6 +342,7 @@ def create_notification(db: Session, recipient_id: int, actor_id: int, type: mod
     db.commit()
     db.refresh(db_notification)
     return db_notification
+
 
 def get_follower_count_for_user(db: Session, user_id: int) -> int:
     """Gets the number of followers a user has."""
@@ -371,12 +385,14 @@ def add_image_to_album(db: Session, image: models.Image, album: models.Album):
         db.commit()
     return album
 
+
 def remove_image_from_album(db: Session, image: models.Image, album: models.Album):
     """Removes an image from an album if it is present."""
     if image in album.images:
         album.images.remove(image)
         db.commit()
     return album
+
 
 # --- NEW SEARCH FUNCTION ---
 
@@ -409,9 +425,11 @@ def search_content(db: Session, query: str, limit: int = 20):
 
     return {"users": users, "photos": photos}
 
+
 def get_notification(db: Session, notification_id: int):
     """Retrieves a single notification by its ID."""
     return db.query(models.Notification).filter(models.Notification.id == notification_id).first()
+
 
 def get_notifications_for_user(db: Session, user_id: int, limit: int = 50):
     """Retrieves a paginated list of notifications for a user."""
@@ -423,11 +441,13 @@ def get_notifications_for_user(db: Session, user_id: int, limit: int = 50):
         .all()
     )
 
+
 def mark_notification_as_read(db: Session, notification: models.Notification):
     """Marks a single notification as read."""
     notification.is_read = True
     db.commit()
     return notification
+
 
 # --- NEW REPORTING AND ADMIN CRUD FUNCTIONS ---
 
@@ -440,9 +460,24 @@ def create_report(db: Session, report: schemas.ReportCreate, reporter_id: int) -
     return db_report
 
 
-def get_reports(db: Session, skip: int = 0, limit: int = 100) -> List[models.Report]:
-    """Retrieves a list of all reports, newest first."""
-    return db.query(models.Report).order_by(models.Report.created_at.desc()).offset(skip).limit(limit).all()
+def get_reports(db: Session, status: Optional[models.ReportStatus] = None, skip: int = 0, limit: int = 100) -> Dict[
+    str, Any]:
+    """Retrieves a list of reports, with optional status filtering and pagination."""
+    query = db.query(models.Report)
+
+    if status:
+        query = query.filter(models.Report.status == status)
+
+    total_count = query.count()
+
+    reports = (
+        query.order_by(models.Report.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    return {"reports": reports, "total_count": total_count}
 
 
 def get_report(db: Session, report_id: int) -> models.Report:

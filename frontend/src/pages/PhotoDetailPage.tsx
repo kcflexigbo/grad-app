@@ -16,7 +16,7 @@ import { AddToAlbumModal } from '../components/AddToAlbumModal';
 import { ReportModal } from '../components/ReportModal';
 import type { Image as ImageType } from '../types/image';
 import type { Comment as CommentType } from '../types/comments';
-import {WS_URL} from "../api/config.ts";
+import {API_URL, WS_URL} from "../api/config.ts";
 
 
 // Define the detailed image type returned by the API for this page
@@ -320,7 +320,7 @@ export const PhotoDetailPage = () => {
                                 </button>
                         )}
                         {image.owner.allow_downloads && (
-                            <a href={`http://127.0.0.1:8000/images/${image.id}/download`} download className="flex items-center gap-2 text-gray-600 hover:text-green-500" target="_blank" rel="noopener noreferrer">
+                            <a href={`${API_URL}/images/${image.id}/download`} download className="flex items-center gap-2 text-gray-600 hover:text-green-500" target="_blank" rel="noopener noreferrer">
                                 <Download /> <span>Download</span>
                             </a>
                         )}

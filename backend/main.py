@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import timedelta
@@ -31,7 +32,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 users_router = APIRouter(prefix="/users", tags=["Users"])
 images_router = APIRouter(prefix="/images", tags=["Images"])
-# --- MODIFIED: Added a new router for comment-specific actions ---
 comments_router = APIRouter(prefix="/comments", tags=["Comments"])
 search_router = APIRouter(prefix="/search", tags=["Search"])
 albums_router = APIRouter(prefix="/albums", tags=["Albums"])
@@ -86,7 +86,8 @@ async def websocket_notifications_endpoint(
                 await websocket.receive_text()
         except WebSocketDisconnect:
             manager.disconnect(user_id)
-    except Exception:
+    except Exception as e:
+        logging.error(f"Error in websocket connection: {e}")
         await websocket.close()
 
 
@@ -673,12 +674,16 @@ def submit_report(
     return crud.create_report(db=db, report=report, reporter_id=current_user.id)
 
 # --- ADMIN-ONLY ENDPOINTS ---
-@admin_router.get("/reports", response_model=List[schemas.Report])
+@admin_router.get("/reports", response_model=schemas.PaginatedReports)
 def get_all_reports(
+    status: Optional[models.ReportStatus] = None,
+    skip: int = 0,
+    limit: int = 20,
     db: Session = Depends(database_manager.get_db),
     admin_user: models.User = Depends(security.get_current_admin_user)
 ):
-    return crud.get_reports(db)
+    result = crud.get_reports(db, status=status, skip=skip, limit=limit)
+    return result
 
 
 @admin_router.put("/reports/{report_id}", response_model=schemas.Report)
@@ -746,11 +751,9 @@ def get_leaderboard_photos(limit: int = 10, db: Session = Depends(database_manag
 def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manager.get_db)):
     """ Gets the top N most followed users. """
     results = crud.get_most_followed_users(db=db, limit=limit)
-    # Process the results to correctly populate the follower count in the schema
     user_list = []
     for user, followers_count in results:
         user.followers_count = followers_count
-        # You might need to fetch following_count separately if you want to display it
         user.following_count = crud.get_following_count_for_user(db, user_id=user.id)
         user_list.append(user)
     return user_list

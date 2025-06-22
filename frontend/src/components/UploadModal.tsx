@@ -10,10 +10,9 @@ interface UploadModalProps {
 }
 
 export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalProps) => {
-    const [originalFile, setOriginalFile] = useState<File | null>(null); // <-- Keep track of the original file for preview
+    const [originalFile, setOriginalFile] = useState<File | null>(null);
     const [compressedFile, setCompressedFile] = useState<File | null>(null);
     const [isCompressing, setIsCompressing] = useState(false);
-    const [_file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [caption, setCaption] = useState('');
     const [tags, setTags] = useState('');
@@ -31,19 +30,40 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
         return () => URL.revokeObjectURL(objectUrl);
     }, [originalFile]);
 
+    // --- MODIFIED: Centralized function to handle closing and state reset ---
+    const handleClose = () => {
+        setOriginalFile(null);
+        setCompressedFile(null);
+        setCaption('');
+        setTags('');
+        setError(null);
+        setIsUploading(false);
+        setIsCompressing(false);
+        onClose();
+    };
+
+    // This check must come after the hooks
     if (!isOpen) return null;
+
+    // --- NEW: Handler to specifically remove the chosen image from the form ---
+    const handleRemoveImage = () => {
+        setOriginalFile(null);
+        setCompressedFile(null);
+    };
 
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+            // Clear any previous selections first
+            handleRemoveImage();
             setOriginalFile(file);
             setError(null);
             setIsCompressing(true);
 
             // --- Compression Logic ---
             const options = {
-                maxSizeMB: 2,          // Max file size 2MB
-                maxWidthOrHeight: 1920, // Max dimensions
+                maxSizeMB: 2,
+                maxWidthOrHeight: 1920,
                 useWebWorker: true,
             };
             try {
@@ -61,11 +81,11 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!compressedFile) { // <-- Check for the compressed file
+        if (!compressedFile) {
             setError('Please select an image to upload.');
             return;
         }
-        if(isCompressing) {
+        if (isCompressing) {
             setError('Please wait for the image to finish processing.');
             return;
         }
@@ -76,7 +96,6 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
         const formData = new FormData();
         formData.append('file', compressedFile);
         formData.append('caption', caption);
-        // Assuming your backend expects a comma-separated string for tags
         formData.append('tags', tags);
 
         try {
@@ -86,7 +105,7 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
                 },
             });
             onUploadSuccess();
-            onClose();
+            handleClose();
         } catch (err) {
             setError('Upload failed. Please try again.');
         } finally {
@@ -100,7 +119,7 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b">
                     <h2 className="text-xl font-bold font-serif">Upload a Photo</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
+                    <button onClick={handleClose} className="p-1 rounded-full hover:bg-gray-200">
                         <X size={24} />
                     </button>
                 </div>
@@ -113,7 +132,7 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
                         {previewUrl ? (
                             <div className="text-center">
                                 <img src={previewUrl} alt="Image preview" className="max-h-64 mx-auto rounded-md" />
-                                <button type="button" onClick={() => setFile(null)} className="mt-2 text-sm text-red-600 hover:underline">
+                                <button type="button" onClick={handleRemoveImage} className="mt-2 text-sm text-red-600 hover:underline">
                                     Remove Image
                                 </button>
                             </div>
@@ -130,6 +149,13 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
                                     </div>
                                     <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
                                 </div>
+                            </div>
+                        )}
+                        {/* --- NEW: Added a loading indicator for compression --- */}
+                        {isCompressing && (
+                             <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mt-2">
+                                <Loader2 className="animate-spin" size={16} />
+                                <span>Processing image...</span>
                             </div>
                         )}
                     </div>
@@ -163,14 +189,14 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
                 {/* Footer with Actions */}
                 <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center space-x-4">
                     {error && <p className="text-sm text-red-600 mr-auto">{error}</p>}
-                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    <button onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                         Cancel
                     </button>
                     <button
                         type="submit"
                         onClick={handleSubmit}
-                        disabled={isUploading}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:bg-blue-300"
+                        disabled={isUploading || isCompressing || !compressedFile}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
                     >
                         {isUploading && <Loader2 className="animate-spin" size={18} />}
                         {isUploading ? 'Uploading...' : 'Upload Photo'}

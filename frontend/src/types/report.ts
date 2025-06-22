@@ -10,4 +10,5 @@ export interface Report {
     reporter: Reporter;
     reported_image_id: number | null;
     reported_comment_id: number | null;
+    created_at: string;
 }

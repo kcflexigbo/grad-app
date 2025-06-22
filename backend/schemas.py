@@ -3,10 +3,12 @@ from typing import List, Optional
 from datetime import datetime
 from models import NotificationType, ReportStatus
 
+
 # --- Configuration ---
 class BaseSchema(BaseModel):
     class Config:
         from_attributes = True
+
 
 # --- Base and Simple Schemas (for nesting) ---
 
@@ -15,22 +17,28 @@ class UserSimple(BaseSchema):
     username: str
     profile_picture_url: Optional[str] = None
 
+
 class TagBase(BaseModel):
     name: str
+
 
 class TagCreate(TagBase):
     pass
 
+
 class Tag(TagBase, BaseSchema):
     id: int
+
 
 # --- Interaction Schemas (Likes, Comments, Follows) ---
 
 class CommentBase(BaseModel):
     content: str
 
+
 class CommentCreate(CommentBase):
     pass
+
 
 class Comment(CommentBase, BaseSchema):
     id: int
@@ -38,10 +46,12 @@ class Comment(CommentBase, BaseSchema):
     created_at: datetime
     author: UserSimple
 
+
 class Like(BaseSchema):
     user_id: int
     image_id: int
     user: UserSimple
+
 
 class Follow(BaseSchema):
     follower_id: int
@@ -54,11 +64,14 @@ class Follow(BaseSchema):
 class ImageBase(BaseModel):
     caption: Optional[str] = None
 
+
 class ImageCreate(ImageBase):
     pass
 
+
 class ImageUpdate(ImageBase):
     pass
+
 
 class Image(ImageBase, BaseSchema):
     id: int
@@ -73,18 +86,22 @@ class Image(ImageBase, BaseSchema):
     comment_count: int = 0
     is_liked_by_current_user: bool = False
 
+
 # --- Album Schemas ---
 
 class AlbumBase(BaseModel):
     name: str
     description: Optional[str] = None
 
+
 class AlbumCreate(AlbumBase):
     pass
+
 
 class AlbumUpdate(AlbumBase):
     name: Optional[str] = None
     description: Optional[str] = None
+
 
 class Album(AlbumBase, BaseSchema):
     id: int
@@ -92,7 +109,7 @@ class Album(AlbumBase, BaseSchema):
     owner: UserSimple
     images: List['Image'] = []
 
-# --- MODIFICATION: New schema for efficient album listing ---
+
 class AlbumWithImageCount(AlbumBase, BaseSchema):
     id: int
     owner: UserSimple
@@ -104,18 +121,22 @@ class AlbumWithImageCount(AlbumBase, BaseSchema):
 class UserBase(BaseModel):
     username: str
 
+
 class UserCreate(UserBase):
     email: EmailStr
     password: str
+
 
 class UserUpdate(BaseModel):
     bio: Optional[str] = None
     profile_picture_url: Optional[str] = None
     allow_downloads: Optional[bool] = None
 
+
 class UserPasswordChange(BaseModel):
     old_password: str
     new_password: str
+
 
 class User(UserBase, BaseSchema):
     id: int
@@ -125,13 +146,13 @@ class User(UserBase, BaseSchema):
     allow_downloads: bool
     created_at: datetime
     images: List[Image] = []
-    albums: List['Album'] = [] # This remains for other potential uses
+    albums: List['Album'] = []  # This remains for other potential uses
     followers_count: int = 0
     following_count: int = 0
     is_followed_by_current_user: bool = False
     is_admin: bool
 
-# --- MODIFICATION: New response model for the profile page ---
+
 class UserProfile(User, BaseSchema):
     albums: List[AlbumWithImageCount] = []
 
@@ -146,15 +167,19 @@ class Notification(BaseSchema):
     actor: UserSimple
     related_entity_id: Optional[int] = None
 
+
 class ReportBase(BaseModel):
     reason: Optional[str] = None
+
 
 class ReportCreate(ReportBase):
     reported_image_id: Optional[int] = None
     reported_comment_id: Optional[int] = None
 
+
 class ReportStatusUpdate(BaseModel):
     status: ReportStatus
+
 
 class Report(ReportBase, BaseSchema):
     id: int
@@ -165,12 +190,17 @@ class Report(ReportBase, BaseSchema):
     created_at: datetime
 
 
+class PaginatedReports(BaseModel):
+    reports: List[Report]
+    total_count: int
+
 
 # --- Authentication Schemas ---
 
 class Token(BaseModel):
     access_token: str
     token_type: str
+
 
 class TokenData(BaseModel):
     username: Optional[str] = None
@@ -181,8 +211,10 @@ class SearchResults(BaseModel):
     users: List[UserSimple]
     photos: List[Image]
 
+
 class UserWithFollowStatus(UserSimple):
     is_followed_by_current_user: bool = False
+
 
 # --- Rebuild Models with Forward References ---
 Album.model_rebuild()
