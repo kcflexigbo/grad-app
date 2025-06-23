@@ -36,7 +36,7 @@ export const RegisterPage = () => {
         <div className="min-h-screen flex items-center justify-center p-4">
             <div className="w-full max-w-4xl flex flex-row-reverse rounded-xl shadow-2xl overflow-hidden">
 
-                {/* Left Side: Image & Branding */}
+                {/* Left Side: Media & Branding */}
                 <div className="hidden md:block w-1/2 relative">
                     <img
                         src="https://images.unsplash.com/photo-1525921429624-479b6a26d84d?q=80&w=1740&auto=format&fit=crop"

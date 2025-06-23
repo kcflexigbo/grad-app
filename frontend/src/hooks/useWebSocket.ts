@@ -35,7 +35,7 @@ export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
         setReadyState(ReadyState.Connecting);
 
         socket.onopen = () => {
-            console.log('WebSocket connection established.');
+            // console.log('WebSocket connection established.');
             setReadyState(ReadyState.Open);
         };
 
@@ -49,7 +49,7 @@ export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
         };
 
         socket.onclose = () => {
-            console.log('WebSocket connection closed.');
+            // console.log('WebSocket connection closed.');
             setReadyState(ReadyState.Closed);
             ws.current = null;
         };

@@ -21,7 +21,7 @@ import apiService from './api/apiService';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { PhotoDetailPage } from './pages/PhotoDetailPage';
+import { MediaDetailPage } from './pages/MediaDetailPage.tsx';
 import { ProfilePage } from './pages/ProfilePage';
 import { SearchPage } from './pages/SearchPage';
 import { AlbumDetailPage } from './pages/AlbumDetailPage';
@@ -73,7 +73,7 @@ const AppLayout = () => {
 
     const handleUploadSuccess = () => {
         setIsUploadModalOpen(false);
-        queryClient.invalidateQueries({ queryKey: ['images'] });
+        queryClient.invalidateQueries({ queryKey: ['media'] });
     };
 
     return (
@@ -126,7 +126,7 @@ function App() {
                     <Routes>
                         <Route path="/" element={<AppLayout />}>
                             <Route index element={<HomePage />} />
-                            <Route path="photo/:id" element={<PhotoDetailPage />} />
+                            <Route path="media/:id" element={<MediaDetailPage />} />
                             <Route path="profile/:username" element={<ProfilePage />} />
                             <Route path="search" element={<SearchPage />} />
                             <Route path="album/:id" element={<AlbumDetailPage />} />

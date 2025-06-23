@@ -8,7 +8,7 @@ import type { Album } from '../types/album';
 interface AddToAlbumModalProps {
     isOpen: boolean;
     onClose: () => void;
-    imageId: number;
+    mediaId: number;
 }
 
 // Fetch the user's own albums to populate the selection list
@@ -17,7 +17,7 @@ const fetchMyAlbums = async (): Promise<Album[]> => {
     return data;
 };
 
-export const AddToAlbumModal = ({ isOpen, onClose, imageId }: AddToAlbumModalProps) => {
+export const AddToAlbumModal = ({ isOpen, onClose, mediaId }: AddToAlbumModalProps) => {
     const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
     const queryClient = useQueryClient();
 
@@ -29,11 +29,11 @@ export const AddToAlbumModal = ({ isOpen, onClose, imageId }: AddToAlbumModalPro
 
     const addToAlbumMutation = useMutation({
         mutationFn: async (albumId: number) => {
-            const response = await apiService.post(`/albums/${albumId}/images/${imageId}`);
+            const response = await apiService.post(`/albums/${albumId}/media/${mediaId}`);
             return response.data; // Assuming API returns updated Album object here
         },
         onSuccess: (data: Album) => {
-            toast.success(`Photo added to "${data.name}"!`);
+            toast.success(`Media added to "${data.name}"!`);
             queryClient.invalidateQueries({ queryKey: ['album', data.id] });
             onClose();
         },

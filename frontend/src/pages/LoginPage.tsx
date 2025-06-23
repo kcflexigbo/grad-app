@@ -36,7 +36,7 @@ export const LoginPage = () => {
         <div className="min-h-screen flex items-center justify-center p-4">
             <div className="w-full max-w-4xl flex flex-row rounded-xl shadow-2xl overflow-hidden">
 
-                {/* Left Side: Image & Branding */}
+                {/* Left Side: Media & Branding */}
                 <div className="hidden md:block w-1/2 relative">
                     {/* Placeholder for a beautiful image. Replace with a real one. */}
                     <img

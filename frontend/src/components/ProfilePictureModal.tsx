@@ -88,7 +88,7 @@ export const ProfilePictureModal = ({
                     </button>
                 </div>
 
-                {/* Main Content: Image Preview */}
+                {/* Main Content: Media Preview */}
                 <div className="p-6 flex-grow flex items-center justify-center">
                     <img
                         src={previewUrl || imageUrl}

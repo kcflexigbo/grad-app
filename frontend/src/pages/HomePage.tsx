@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { ImageGrid } from '../components/ImageGrid';
+import { MediaGrid } from '../components/MediaGrid'; // <-- Use MediaGrid
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import apiService from '../api/apiService';
-import type {Image} from '../types/image';
+import type { Media } from '../types/media'; // <-- Use Media type
 import { Loader2, Camera } from 'lucide-react';
 
 type SortOption = 'newest' | 'popular' | 'featured';
 const PAGE_SIZE = 12;
 
-const fetchImages = async ({ pageParam = 0, sortBy }: { pageParam?: number, sortBy: SortOption }) => {
-    const { data } = await apiService.get<Image[]>('/images', {
+const fetchMedia = async ({ pageParam = 0, sortBy }: { pageParam?: number, sortBy: SortOption }) => {
+    const { data } = await apiService.get<Media[]>('/media', {
         params: {
             sort_by: sortBy,
             skip: pageParam,
@@ -19,7 +19,7 @@ const fetchImages = async ({ pageParam = 0, sortBy }: { pageParam?: number, sort
         },
     });
     return {
-        images: data,
+        media: data,
         nextPage: data.length === PAGE_SIZE ? pageParam + PAGE_SIZE : undefined,
     };
 };
@@ -36,8 +36,9 @@ export const HomePage = () => {
         fetchNextPage,
         isFetchingNextPage,
     } = useInfiniteQuery({
-        queryKey: ['images', sortBy],
-        queryFn: ({ pageParam }) => fetchImages({ pageParam, sortBy }),
+        // 4. UPDATE the query key for better cache separation
+        queryKey: ['media', sortBy],
+        queryFn: ({ pageParam }) => fetchMedia({ pageParam, sortBy }), // <-- Use renamed function
         initialPageParam: 0,
         getNextPageParam: (lastPage) => lastPage.nextPage,
     });
@@ -49,7 +50,8 @@ export const HomePage = () => {
     }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
 
-    const allImages = data?.pages.flatMap(page => page.images) || [];
+    // 5. RENAME the flattened array variable
+    const allMedia = data?.pages.flatMap(page => page.media) || [];
 
     const handleSortChange = (newSortOption: SortOption) => {
         if (newSortOption !== sortBy) {
@@ -74,7 +76,7 @@ export const HomePage = () => {
 
             <main className="space-y-8">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                     <h2 className="text-2xl font-semibold">Explore Photos</h2>
+                     <h2 className="text-2xl font-semibold">Explore Media</h2>
                      <div className="flex items-center justify-center gap-2 p-1 bg-gray-100 rounded-full">
                         <button onClick={() => handleSortChange('newest')} className={getSortButtonClass('newest')}>Most Recent</button>
                         <button onClick={() => handleSortChange('popular')} className={getSortButtonClass('popular')}>Most Popular</button>
@@ -85,14 +87,15 @@ export const HomePage = () => {
                 <div>
                     {isLoading && <SkeletonLoader count={12} />}
                     {error && <div className="text-center text-red-500 py-10 bg-red-50 rounded-lg">Error: {error.message}</div>}
-                    {!isLoading && !error && allImages.length === 0 && (
+                    {!isLoading && !error && allMedia.length === 0 && (
                          <div className="text-center text-gray-500 py-20 bg-white rounded-lg border-2 border-dashed">
                              <Camera size={48} className="mx-auto text-gray-300" />
                             <h3 className="text-2xl font-semibold mt-4">A Blank Canvas</h3>
                             <p className="mt-2">This gallery is waiting for its first masterpiece. Be the first to upload!</p>
                         </div>
                     )}
-                    {allImages.length > 0 && <ImageGrid images={allImages} />}
+                    {/* 6. USE the renamed variable here */}
+                    {allMedia.length > 0 && <MediaGrid mediaItems={allMedia} />}
                 </div>
 
                 <div className="flex justify-center mt-12 h-10">
@@ -105,7 +108,7 @@ export const HomePage = () => {
                         )}
                     </div>
 
-                    {!hasNextPage && !isLoading && !isFetchingNextPage && allImages.length > 0 && (
+                    {!hasNextPage && !isLoading && !isFetchingNextPage && allMedia.length > 0 && (
                         <p className="text-gray-500 font-serif text-lg">You've reached the end of the gallery.</p>
                     )}
                 </div>

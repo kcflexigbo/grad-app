@@ -4,11 +4,11 @@ import apiService from '../api/apiService';
 import type {Comment} from '../types/comments'; // Assuming you create this type
 
 interface CommentFormProps {
-    imageId: number;
+    mediaId: number;
     onCommentPosted: (newComment: Comment) => void;
 }
 
-export const CommentForm = ({ imageId, onCommentPosted }: CommentFormProps) => {
+export const CommentForm = ({ mediaId, onCommentPosted }: CommentFormProps) => {
     const { user, isLoggedIn } = useAuth();
     const [content, setContent] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +23,7 @@ export const CommentForm = ({ imageId, onCommentPosted }: CommentFormProps) => {
 
         setIsSubmitting(true);
         try {
-            const response = await apiService.post<Comment>(`/images/${imageId}/comments`, { content });
+            const response = await apiService.post<Comment>(`/media/${mediaId}/comments`, { content });
             onCommentPosted(response.data);
             setContent('');
         } catch (error) {
@@ -36,7 +36,7 @@ export const CommentForm = ({ imageId, onCommentPosted }: CommentFormProps) => {
     return (
         <form onSubmit={handleSubmit} className="flex items-start gap-3 mt-4">
             <img
-                src={user?.profile_picture_url || 'https://via.placeholder.com/40'}
+                src={user?.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'}
                 alt="Your profile"
                 className="w-10 h-10 rounded-full object-cover"
             />

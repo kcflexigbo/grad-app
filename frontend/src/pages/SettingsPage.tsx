@@ -1,4 +1,3 @@
-// C:/Users/kcfle/Documents/React Projects/grad-app/frontend/src/pages/SettingsPage.tsx
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
@@ -87,7 +86,7 @@ export const SettingsPage = () => {
                         onChange={(e) => setAllowDownloads(e.target.checked)}
                     />
                     <label htmlFor="allow_downloads" className="ml-3 block text-sm font-medium text-gray-700">
-                        Allow others to download my photos
+                        Allow others to download my media
                     </label>
                 </div>
                 <button type="submit" disabled={updateProfileMutation.isPending} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-md disabled:bg-blue-300">

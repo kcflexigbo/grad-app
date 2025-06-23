@@ -21,13 +21,13 @@ const getNotificationDetails = (notification: Notification) => {
     switch (notification.type) {
         case 'like':
             details.icon = <Heart className="text-red-500" size={20} />;
-            details.text = 'liked your photo.';
-            details.link = `/photo/${notification.related_entity_id}`;
+            details.text = 'liked your media.';
+            details.link = `/media/${notification.related_entity_id}`;
             break;
         case 'comment':
             details.icon = <MessageCircle className="text-blue-500" size={20} />;
-            details.text = 'commented on your photo.';
-            details.link = `/photo/${notification.related_entity_id}`;
+            details.text = 'commented on your media.';
+            details.link = `/media/${notification.related_entity_id}`;
             break;
         case 'follow':
             details.icon = <UserPlus className="text-purple-500" size={20} />;
@@ -36,8 +36,8 @@ const getNotificationDetails = (notification: Notification) => {
             break;
         case 'download':
              details.icon = <Download className="text-green-500" size={20} />;
-             details.text = 'downloaded your photo.';
-             details.link = `/photo/${notification.related_entity_id}`;
+             details.text = 'downloaded your media.';
+             details.link = `/media/${notification.related_entity_id}`;
              break;
     }
 

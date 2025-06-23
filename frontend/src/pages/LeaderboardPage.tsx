@@ -3,15 +3,15 @@ import { Link } from 'react-router-dom';
 import { Crown } from 'lucide-react';
 
 import apiService from '../api/apiService';
-import { ImageGrid } from '../components/ImageGrid';
+import { MediaGrid } from '../components/MediaGrid.tsx';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 
-import type { Image } from '../types/image';
+import type { Media } from '../types/media.ts';
 import type { User } from '../types/user';
 
 // Fetcher functions
-const fetchTopPhotos = async (): Promise<Image[]> => {
-    const { data } = await apiService.get('/leaderboard/photos?limit=9');
+const fetchTopMedia = async (): Promise<Media[]> => {
+    const { data } = await apiService.get('/leaderboard/media?limit=9'); // Corrected endpoint
     return data;
 };
 
@@ -37,11 +37,10 @@ const UserListSkeleton = () => (
 
 
 export const LeaderboardPage = () => {
-    const { data: topPhotos, isLoading: isLoadingPhotos, isError: isErrorPhotos } = useQuery({
-        queryKey: ['leaderboard_photos'],
-        queryFn: fetchTopPhotos,
+    const { data: topMedia, isLoading: isLoadingMedia, isError: isErrorMedia } = useQuery({
+        queryKey: ['leaderboard_media'],
+        queryFn: fetchTopMedia,
     });
-
     const { data: topUsers, isLoading: isLoadingUsers, isError: isErrorUsers } = useQuery({
         queryKey: ['leaderboard_users'],
         queryFn: fetchTopUsers,
@@ -74,7 +73,7 @@ export const LeaderboardPage = () => {
                                 <li key={user.id} className="flex items-center gap-4 p-3 bg-white border rounded-lg hover:shadow-md transition-shadow">
                                     <span className="text-2xl font-bold w-8 text-center">{index + 1}</span>
                                     <Link to={`/profile/${user.username}`}>
-                                        <img src={user.profile_picture_url || 'https://via.placeholder.com/48'} alt={user.username} className="w-12 h-12 rounded-full object-cover" />
+                                        <img src={user.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'} alt={user.username} className="w-12 h-12 rounded-full object-cover" />
                                     </Link>
                                     <div className="flex-grow">
                                         <Link to={`/profile/${user.username}`} className="font-bold text-gray-800 hover:underline">{user.username}</Link>
@@ -90,10 +89,10 @@ export const LeaderboardPage = () => {
 
                 {/* Most Liked Photos Section */}
                 <div className="lg:col-span-2 space-y-4">
-                     <h2 className="text-3xl font-semibold font-serif border-b pb-2">Most Liked Photos</h2>
-                     {isLoadingPhotos && <SkeletonLoader count={6} />}
-                     {isErrorPhotos && <p className="text-red-500">Could not load top photos.</p>}
-                     {topPhotos && <ImageGrid images={topPhotos} />}
+                     <h2 className="text-3xl font-semibold font-serif border-b pb-2">Most Liked Media</h2>
+                     {isLoadingMedia && <SkeletonLoader count={6} />}
+                     {isErrorMedia && <p className="text-red-500">Could not load top photos.</p>}
+                     {topMedia && <MediaGrid mediaItems={topMedia} />}
                 </div>
 
             </div>

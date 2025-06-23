@@ -1,7 +1,9 @@
+# C:/Users/kcfle/Documents/React Projects/grad-app/frontend/src/schemas.py
+
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime
-from models import NotificationType, ReportStatus
+from models import NotificationType, ReportStatus, MediaType  # Import MediaType
 
 
 # --- Configuration ---
@@ -42,14 +44,14 @@ class CommentCreate(CommentBase):
 
 class Comment(CommentBase, BaseSchema):
     id: int
-    image_id: int
+    media_id: int  # RENAMED from image_id
     created_at: datetime
     author: UserSimple
 
 
 class Like(BaseSchema):
     user_id: int
-    image_id: int
+    media_id: int  # RENAMED from image_id
     user: UserSimple
 
 
@@ -59,29 +61,30 @@ class Follow(BaseSchema):
     created_at: datetime
 
 
-# --- Image Schemas ---
+# --- Media Schemas (Previously Media Schemas) ---
 
-class ImageBase(BaseModel):
+class MediaBase(BaseModel):
     caption: Optional[str] = None
 
 
-class ImageCreate(ImageBase):
+class MediaCreate(MediaBase):
     pass
 
 
-class ImageUpdate(ImageBase):
+class MediaUpdate(MediaBase):
     pass
 
 
-class Image(ImageBase, BaseSchema):
+class Media(MediaBase, BaseSchema):
     id: int
     owner_id: int
-    image_url: str
+    media_url: str  # RENAMED from image_url
+    media_type: MediaType  # NEW field
     is_featured: bool
     created_at: datetime
     owner: UserSimple
     tags: List[Tag] = []
-    comments: List[Comment] = []
+    # `comments` list removed for brevity, often fetched separately
     like_count: int = 0
     comment_count: int = 0
     is_liked_by_current_user: bool = False
@@ -107,13 +110,13 @@ class Album(AlbumBase, BaseSchema):
     id: int
     owner_id: int
     owner: UserSimple
-    images: List['Image'] = []
+    media: List['Media'] = []  # RENAMED from media
 
 
-class AlbumWithImageCount(AlbumBase, BaseSchema):
+class AlbumWithMediaCount(AlbumBase, BaseSchema):
     id: int
     owner: UserSimple
-    image_count: int = 0
+    media_count: int = 0  # RENAMED from image_count
 
 
 # --- User Schemas ---
@@ -145,8 +148,8 @@ class User(UserBase, BaseSchema):
     profile_picture_url: Optional[str] = None
     allow_downloads: bool
     created_at: datetime
-    images: List[Image] = []
-    albums: List['Album'] = []  # This remains for other potential uses
+    media: List[Media] = []  # RENAMED from media
+    albums: List['Album'] = []
     followers_count: int = 0
     following_count: int = 0
     is_followed_by_current_user: bool = False
@@ -154,10 +157,10 @@ class User(UserBase, BaseSchema):
 
 
 class UserProfile(User, BaseSchema):
-    albums: List[AlbumWithImageCount] = []
+    albums: List[AlbumWithMediaCount] = []
 
 
-# --- Notification and Report Schemas (Primarily for Reading) ---
+# --- Notification and Report Schemas ---
 
 class Notification(BaseSchema):
     id: int
@@ -165,7 +168,7 @@ class Notification(BaseSchema):
     is_read: bool
     created_at: datetime
     actor: UserSimple
-    related_entity_id: Optional[int] = None
+    related_entity_id: Optional[int] = None # Refers to media.id for like/comment
 
 
 class ReportBase(BaseModel):
@@ -173,7 +176,7 @@ class ReportBase(BaseModel):
 
 
 class ReportCreate(ReportBase):
-    reported_image_id: Optional[int] = None
+    reported_media_id: Optional[int] = None  # RENAMED
     reported_comment_id: Optional[int] = None
 
 
@@ -185,7 +188,7 @@ class Report(ReportBase, BaseSchema):
     id: int
     status: ReportStatus
     reporter: UserSimple
-    reported_image_id: Optional[int] = None
+    reported_media_id: Optional[int] = None  # RENAMED
     reported_comment_id: Optional[int] = None
     created_at: datetime
 
@@ -209,7 +212,7 @@ class TokenData(BaseModel):
 # --- Search Schemas ---
 class SearchResults(BaseModel):
     users: List[UserSimple]
-    photos: List[Image]
+    media: List[Media]  # RENAMED from media
 
 
 class UserWithFollowStatus(UserSimple):

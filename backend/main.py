@@ -1,4 +1,3 @@
-import logging
 import os
 import uuid
 from datetime import timedelta
@@ -18,12 +17,10 @@ from connection_manager import manager
 
 limiter = Limiter(key_func=get_remote_address)
 
-# Create all tables in the database (if they don't exist)
 models.Base.metadata.create_all(bind=database_manager.engine)
 
 app = FastAPI(title="Graduation Social Gallery API")
 
-# --- MODIFIED: Add rate limiter state and exception handler to the app ---
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -31,7 +28,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # --- Routers for Organization ---
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 users_router = APIRouter(prefix="/users", tags=["Users"])
-images_router = APIRouter(prefix="/images", tags=["Images"])
+media_router = APIRouter(prefix="/media", tags=["Media"])  # RENAMED
 comments_router = APIRouter(prefix="/comments", tags=["Comments"])
 search_router = APIRouter(prefix="/search", tags=["Search"])
 albums_router = APIRouter(prefix="/albums", tags=["Albums"])
@@ -51,58 +48,34 @@ origins = [
     "https://www.ratemygradpix.xin",
     "https://ratemygradpix.xin",
 ]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-
-# --- General Endpoints ---
+# --- General & WebSocket Endpoints ---
 @app.get("/", tags=["General"])
 def read_root():
     return {"message": "Welcome to the Graduation Social Gallery API"}
-
 
 @app.get("/healthz", tags=["General"])
 async def healthz() -> Dict[str, str]:
     return {"status": "OK"}
 
 @app.websocket("/ws/notifications")
-async def websocket_notifications_endpoint(
-    websocket: WebSocket,
-    token: str,
-    db: Session = Depends(database_manager.get_db)
-):
-    """Handles WebSocket connections for personal user notifications."""
+async def websocket_notifications_endpoint(websocket: WebSocket, token: str, db: Session = Depends(database_manager.get_db)):
     try:
         current_user = security.get_current_user(token=token, db=db)
-        user_id = current_user.id
-        await manager.connect(user_id, websocket) # Uses the personal connection method
+        await manager.connect(current_user.id, websocket)
         try:
-            while True:
-                await websocket.receive_text()
-        except WebSocketDisconnect:
-            manager.disconnect(user_id)
-    except Exception as e:
-        logging.error(f"Error in websocket connection: {e}")
-        await websocket.close()
+            while True: await websocket.receive_text()
+        except WebSocketDisconnect: manager.disconnect(current_user.id)
+    except Exception: await websocket.close()
 
-
-# --- NEW: WebSocket Endpoint for Live Comments ---
-@app.websocket("/ws/comments/{image_id}")
-async def websocket_comments_endpoint(websocket: WebSocket, image_id: int):
-    """Handles WebSocket connections for live comment rooms."""
-    room_name = f"image-{image_id}"
+@app.websocket("/ws/comments/{media_id}")  # RENAMED from image_id
+async def websocket_comments_endpoint(websocket: WebSocket, media_id: int):
+    room_name = f"media-{media_id}"  # RENAMED from image-
     await manager.connect_to_room(room_name, websocket)
     try:
-        while True:
-            # Keep the connection alive
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect_from_room(room_name, websocket)
+        while True: await websocket.receive_text()
+    except WebSocketDisconnect: manager.disconnect_from_room(room_name, websocket)
 
 # --- Authentication Endpoints ---
 @auth_router.post("/register", response_model=schemas.User)
@@ -120,7 +93,6 @@ def register_user(request: Request, user: schemas.UserCreate, db: Session = Depe
 
 
 @auth_router.post("/token", response_model=schemas.Token)
-# --- MODIFIED: Added request object and stricter rate limit decorator ---
 @limiter.limit("15/minute")
 def login_for_access_token(
         request: Request,
@@ -142,7 +114,6 @@ def login_for_access_token(
 
 
 # --- User Endpoints ---
-# ... (users_router endpoints are unchanged) ...
 @users_router.get("/me", response_model=schemas.User)
 def read_current_user(current_user: models.User = Depends(security.get_current_user)):
     return current_user
@@ -179,7 +150,7 @@ def get_user_profile(
     profile_user.is_followed_by_current_user = is_following
 
     for album in profile_user.albums:
-        album.image_count = len(album.images)
+        album.media_count = len(album.media)
 
     return profile_user
 
@@ -316,249 +287,187 @@ def get_user_following_list(
 
     return following_list
 
-# --- Image Endpoints ---
-@images_router.get("", response_model=List[schemas.Image])
-def get_all_images(
-        sort_by: str = "newest",
-        skip: int = 0,
-        limit: int = 20,
-        db: Session = Depends(database_manager.get_db)
-):
-    results = crud.get_images(db=db, sort_by=sort_by, skip=skip, limit=limit)
-    images_with_counts = []
-    for image, like_count, comment_count in results:
-        image.like_count = like_count
-        image.comment_count = comment_count
-        images_with_counts.append(image)
-    return images_with_counts
+
+# --- Media Endpoints (Previously Media Endpoints) ---
+@media_router.get("", response_model=List[schemas.Media])
+def get_all_media(sort_by: str = "newest", skip: int = 0, limit: int = 20,
+                  db: Session = Depends(database_manager.get_db)):
+    results = crud.get_all_media(db=db, sort_by=sort_by, skip=skip, limit=limit)
+    media_with_counts = []
+    for media, like_count, comment_count in results:
+        media.like_count = like_count
+        media.comment_count = comment_count
+        media_with_counts.append(media)
+    return media_with_counts
 
 
-@images_router.post("", response_model=schemas.Image)
-def upload_image(
-        file: UploadFile = File(...),
+@media_router.post("", response_model=List[schemas.Media])
+def upload_media(
+        files: List[UploadFile] = File(...),
         caption: str = Form(""),
         tags: str = Form(""),
         db: Session = Depends(database_manager.get_db),
         current_user: models.User = Depends(security.get_current_user)
 ):
-    file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"images/{uuid.uuid4()}{file_extension}"
-    try:
-        image_url = oss_manager.upload_file_to_oss(file=file, object_name=unique_filename)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to upload image: {e}")
-
-    db_image = crud.create_image(db=db, owner_id=current_user.id, image_url=image_url, caption=caption)
+    created_media_list = []
+    tag_models = []
     if tags:
         tag_names = [tag.strip() for tag in tags.split(',')]
         tag_models = crud.get_or_create_tags(db, tags=tag_names)
-        crud.associate_tags_with_image(db, image=db_image, tags=tag_models)
-        db.refresh(db_image)
 
-    return db_image
+    for file in files:
+        content_type = file.content_type
+        if content_type.startswith("image/"):
+            media_type = models.MediaType.image
+        elif content_type.startswith("video/"):
+            media_type = models.MediaType.video
+        else:
+            continue
+
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"media/{uuid.uuid4()}{file_extension}"
+
+        try:
+            media_url = oss_manager.upload_file_to_oss(file=file, object_name=unique_filename)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to upload {file.filename}: {e}")
+
+        db_media = crud.create_media(db=db, owner_id=current_user.id, media_url=media_url, caption=caption,
+                                     media_type=media_type)
+        if tag_models:
+            crud.associate_tags_with_media(db, media=db_media, tags=tag_models)
+            db.refresh(db_media)
+        created_media_list.append(db_media)
+
+    if not created_media_list:
+        raise HTTPException(status_code=400, detail="No valid files were uploaded.")
+    return created_media_list
 
 
-@images_router.get("/{image_id}", response_model=schemas.Image)
-def get_image_by_id(
-        image_id: int,
-        db: Session = Depends(database_manager.get_db),
-        current_user: Optional[models.User] = Depends(security.get_optional_current_user),
-):
-    db_image = crud.get_image(db, image_id=image_id)
-    if db_image is None:
-        raise HTTPException(status_code=404, detail="Image not found")
+@media_router.get("/{media_id}", response_model=schemas.Media)
+def get_media_by_id(media_id: int, db: Session = Depends(database_manager.get_db),
+                    current_user: Optional[models.User] = Depends(security.get_optional_current_user)):
+    db_media = crud.get_media(db, media_id=media_id)
+    if db_media is None: raise HTTPException(status_code=404, detail="Media not found")
 
-    db_image.like_count = crud.get_like_count_for_image(db, image_id=image_id)
-    db_image.comment_count = crud.get_comment_count_for_image(db, image_id=image_id)
+    db_media.like_count = crud.get_like_count_for_media(db, media_id=media_id)
+    db_media.comment_count = crud.get_comment_count_for_media(db, media_id=media_id)
 
     is_liked = False
     if current_user:
-        like = crud.get_like(db, user_id=current_user.id, image_id=image_id)
-        if like:
-            is_liked = True
-    db_image.is_liked_by_current_user = is_liked
+        like = crud.get_like(db, user_id=current_user.id, media_id=media_id)
+        is_liked = bool(like)
+    db_media.is_liked_by_current_user = is_liked
+    return db_media
 
-    return db_image
 
-# --- MODIFIED: Added user-facing delete endpoint for images ---
-@images_router.delete("/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_image_by_user(
-    image_id: int,
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
-):
-    """ Allows a user to delete their own image. Admins can also use this. """
-    image = crud.get_image(db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
+@media_router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_media_by_user(media_id: int, db: Session = Depends(database_manager.get_db),
+                         current_user: models.User = Depends(security.get_current_user)):
+    media = crud.get_media(db, media_id=media_id)
+    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    if media.owner_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this media")
+    crud.delete_media(db, media=media)
 
-    # Authorization check: user must be the owner OR an admin
-    if image.owner_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this image")
 
-    crud.delete_image(db, image=image)
-    return
+@media_router.put("/{media_id}", response_model=schemas.Media)
+def update_media_caption(media_id: int, media_update: schemas.MediaUpdate,
+                         db: Session = Depends(database_manager.get_db),
+                         current_user: models.User = Depends(security.get_current_user)):
+    media = crud.get_media(db, media_id=media_id)
+    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    if media.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this media")
+    updated_media = crud.update_media(db, media=media, media_update=media_update)
+    # Re-fetch counts for response
+    updated_media.like_count = crud.get_like_count_for_media(db, media_id=media_id)
+    updated_media.comment_count = crud.get_comment_count_for_media(db, media_id=media_id)
+    like = crud.get_like(db, user_id=current_user.id, media_id=media_id)
+    updated_media.is_liked_by_current_user = bool(like)
+    return updated_media
 
-@images_router.put("/{image_id}", response_model=schemas.Image)
-def update_image_caption(
-    image_id: int,
-    image_update: schemas.ImageUpdate, # Takes the new caption in the request body
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
-):
-    """
-    Allows a user to update the caption of their own image.
-    """
-    image = crud.get_image(db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
 
-    if image.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this image")
+@media_router.get("/{media_id}/download", response_class=RedirectResponse, status_code=307)
+async def download_media(media_id: int, db: Session = Depends(database_manager.get_db),
+                         current_user: models.User = Depends(security.get_current_user)):
+    media = crud.get_media(db, media_id=media_id)
+    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    if not media.owner.allow_downloads: raise HTTPException(status_code=403,
+                                                            detail="The owner has disabled downloads for this item.")
 
-    updated_image = crud.update_image(db, image=image, image_update=image_update)
-
-    updated_image.like_count = crud.get_like_count_for_image(db, image_id=image_id)
-    updated_image.comment_count = crud.get_comment_count_for_image(db, image_id=image_id)
-    like = crud.get_like(db, user_id=current_user.id, image_id=image_id)
-    updated_image.is_liked_by_current_user = bool(like)
-
-    return updated_image
-
-@images_router.get("/{image_id}/download", response_class=RedirectResponse, status_code=307)
-async def download_image(
-        image_id: int,
-        db: Session = Depends(database_manager.get_db),
-        current_user: models.User = Depends(security.get_current_user),
-):
-    image = crud.get_image(db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
-
-    if not image.owner.allow_downloads:
-        raise HTTPException(status_code=403, detail="The owner has disabled downloads for this image.")
-
-    db_notification = crud.create_notification(
-        db,
-        recipient_id=image.owner_id,
-        actor_id=current_user.id,
-        type=models.NotificationType.download,
-        related_entity_id=image.id
-    )
+    db_notification = crud.create_notification(db, recipient_id=media.owner_id, actor_id=current_user.id,
+                                               type=models.NotificationType.download, related_entity_id=media.id)
     if db_notification:
-        await manager.send_personal_message(
-            schemas.Notification.model_validate(db_notification).model_dump_json(),
-            db_notification.recipient_id
-        )
-
-    return RedirectResponse(url=image.image_url)
+        await manager.send_personal_message(schemas.Notification.model_validate(db_notification).model_dump_json(),
+                                            db_notification.recipient_id)
+    return RedirectResponse(url=media.media_url)
 
 
-@images_router.post("/{image_id}/comments", response_model=schemas.Comment)
-async def post_comment_on_image(
-        image_id: int,
-        comment: schemas.CommentCreate,
-        db: Session = Depends(database_manager.get_db),
-        current_user: models.User = Depends(security.get_current_user),
-):
-    image = crud.get_image(db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=status.HTTP_404, detail="Image not found")
+@media_router.post("/{media_id}/comments", response_model=schemas.Comment)
+async def post_comment_on_media(media_id: int, comment: schemas.CommentCreate,
+                                db: Session = Depends(database_manager.get_db),
+                                current_user: models.User = Depends(security.get_current_user)):
+    media = crud.get_media(db, media_id=media_id)
+    if not media: raise HTTPException(status_code=status.HTTP_404, detail="Media not found")
 
-    db_comment = crud.create_comment(db=db, comment=comment, image_id=image_id, author_id=current_user.id)
+    db_comment = crud.create_comment(db=db, comment=comment, media_id=media_id, author_id=current_user.id)
+    room_name = f"media-{media_id}"
+    await manager.broadcast_to_room(room_name, schemas.Comment.model_validate(db_comment).model_dump_json())
 
-    room_name = f"image-{image_id}"
-    new_comment_schema = schemas.Comment.model_validate(db_comment)
-    await manager.broadcast_to_room(room_name, new_comment_schema.model_dump_json())
-
-    db_notification = crud.create_notification(
-        db,
-        recipient_id=image.owner_id,
-        actor_id=current_user.id,
-        type=models.NotificationType.comment,
-        related_entity_id=image.id
-    )
+    db_notification = crud.create_notification(db, recipient_id=media.owner_id, actor_id=current_user.id,
+                                               type=models.NotificationType.comment, related_entity_id=media.id)
     if db_notification:
-        await manager.send_personal_message(
-            schemas.Notification.model_validate(db_notification).model_dump_json(),
-            db_notification.recipient_id
-        )
-
+        await manager.send_personal_message(schemas.Notification.model_validate(db_notification).model_dump_json(),
+                                            db_notification.recipient_id)
     return db_comment
 
 
-@images_router.post("/{image_id}/like", status_code=status.HTTP_204_NO_CONTENT)
-async def like_image(
-        image_id: int,
-        db: Session = Depends(database_manager.get_db),
-        current_user: models.User = Depends(security.get_current_user),
-):
-    image = crud.get_image(db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
+@media_router.post("/{media_id}/like", status_code=status.HTTP_204_NO_CONTENT)
+async def like_media(media_id: int, db: Session = Depends(database_manager.get_db),
+                     current_user: models.User = Depends(security.get_current_user)):
+    media = crud.get_media(db, media_id=media_id)
+    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    if crud.get_like(db, user_id=current_user.id, media_id=media_id):
+        raise HTTPException(status_code=400, detail="Media already liked")
 
-    existing_like = crud.get_like(db, user_id=current_user.id, image_id=image_id)
-    if existing_like:
-        raise HTTPException(status_code=400, detail="Image already liked")
-
-    crud.create_like(db, user_id=current_user.id, image_id=image_id)
-    db_notification = crud.create_notification(
-        db,
-        recipient_id=image.owner_id,
-        actor_id=current_user.id,
-        type=models.NotificationType.like,
-        related_entity_id=image.id
-    )
+    crud.create_like(db, user_id=current_user.id, media_id=media_id)
+    db_notification = crud.create_notification(db, recipient_id=media.owner_id, actor_id=current_user.id,
+                                               type=models.NotificationType.like, related_entity_id=media.id)
     if db_notification:
-        await manager.send_personal_message(
-            schemas.Notification.model_validate(db_notification).model_dump_json(),
-            db_notification.recipient_id
-        )
-    return
+        await manager.send_personal_message(schemas.Notification.model_validate(db_notification).model_dump_json(),
+                                            db_notification.recipient_id)
 
 
-@images_router.delete("/{image_id}/like", status_code=status.HTTP_204_NO_CONTENT)
-def unlike_image(
-        image_id: int,
-        db: Session = Depends(database_manager.get_db),
-        current_user: models.User = Depends(security.get_current_user),
-):
-    like_to_delete = crud.get_like(db, user_id=current_user.id, image_id=image_id)
+@media_router.delete("/{media_id}/like", status_code=status.HTTP_204_NO_CONTENT)
+def unlike_media(media_id: int, db: Session = Depends(database_manager.get_db),
+                 current_user: models.User = Depends(security.get_current_user)):
+    like_to_delete = crud.get_like(db, user_id=current_user.id, media_id=media_id)
     if not like_to_delete:
-        raise HTTPException(status_code=404, detail="Image not liked")
-
+        raise HTTPException(status_code=404, detail="Media not liked")
     crud.delete_like(db, like=like_to_delete)
-    return
 
-# --- MODIFIED: Added user-facing delete endpoint for comments ---
+# --- comments ---
 @comments_router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_comment_by_user(
-    comment_id: int,
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
-):
-    """ Allows a user to delete their own comment. Admins can also use this. """
+def delete_comment_by_user(comment_id: int, db: Session = Depends(database_manager.get_db),
+                           current_user: models.User = Depends(security.get_current_user)):
     comment = crud.get_comment(db, comment_id=comment_id)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-
     if comment.author_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
-
     crud.delete_comment(db, comment=comment)
-    return
 
 
 # --- ALBUM ENDPOINTS ---
 @search_router.get("", response_model=schemas.SearchResults)
 def search(q: str = "", db: Session = Depends(database_manager.get_db)):
     if not q:
-        return {"users": [], "photos": []}
-
+        return {"users": [], "media": []}
     results = crud.search_content(db, query=q)
-    for image in results["photos"]:
-        image.like_count = crud.get_like_count_for_image(db, image_id=image.id)
-        image.comment_count = crud.get_comment_count_for_image(db, image_id=image.id)
+    for media_item in results["media"]:
+        media_item.like_count = crud.get_like_count_for_media(db, media_id=media_item.id)
+        media_item.comment_count = crud.get_comment_count_for_media(db, media_id=media_item.id)
     return results
 
 @albums_router.post("", response_model=schemas.Album)
@@ -598,43 +507,24 @@ def delete_album(
     return
 
 
-@albums_router.post("/{album_id}/images/{image_id}", response_model=schemas.Album)
-def add_image_to_album(
-        album_id: int,
-        image_id: int,
-        db: Session = Depends(database_manager.get_db),
-        current_user: models.User = Depends(security.get_current_user)
-):
+@albums_router.post("/{album_id}/media/{media_id}", response_model=schemas.Album)
+def add_media_to_album(album_id: int, media_id: int, db: Session = Depends(database_manager.get_db), current_user: models.User = Depends(security.get_current_user)):
     db_album = crud.get_album(db, album_id=album_id)
-    if not db_album:
-        raise HTTPException(status_code=404, detail="Album not found")
-    if db_album.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this album")
+    if not db_album or db_album.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Album not found or not authorized")
+    db_media = crud.get_media(db, media_id=media_id)
+    if not db_media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    return crud.add_media_to_album(db=db, media=db_media, album=db_album)
 
-    db_image = crud.get_image(db, image_id=image_id)
-    if not db_image:
-        raise HTTPException(status_code=404, detail="Image not found")
-
-    return crud.add_image_to_album(db=db, image=db_image, album=db_album)
-
-@albums_router.delete("/{album_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_image_from_album(
-    album_id: int,
-    image_id: int,
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
-):
+@albums_router.delete("/{album_id}/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_media_from_album(album_id: int, media_id: int, db: Session = Depends(database_manager.get_db), current_user: models.User = Depends(security.get_current_user)):
     db_album = crud.get_album(db, album_id=album_id)
-    if not db_album:
-        raise HTTPException(status_code=404, detail="Album not found")
-    if db_album.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this album")
-
-    db_image = crud.get_image(db, image_id=image_id)
-    if not db_image:
-        raise HTTPException(status_code=404, detail="Image not found")
-
-    crud.remove_image_from_album(db=db, image=db_image, album=db_album)
+    if not db_album or db_album.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Album not found or not authorized")
+    db_media = crud.get_media(db, media_id=media_id)
+    if not db_media: raise HTTPException(status_code=404, detail="Media not found")
+    crud.remove_media_from_album(db=db, media=db_media, album=db_album)
     return
 
 @notifications_router.get("", response_model=List[schemas.Notification])
@@ -666,11 +556,10 @@ def submit_report(
         db: Session = Depends(database_manager.get_db),
         current_user: models.User = Depends(security.get_current_user)
 ):
-    if not (report.reported_image_id or report.reported_comment_id):
-        raise HTTPException(status_code=400, detail="Must report either an image or a comment.")
-    if report.reported_image_id and report.reported_comment_id:
-        raise HTTPException(status_code=400, detail="Cannot report an image and a comment simultaneously.")
-
+    if not (report.reported_media_id or report.reported_comment_id):
+        raise HTTPException(status_code=400, detail="Must report either a media item or a comment.")
+    if report.reported_media_id and report.reported_comment_id:
+        raise HTTPException(status_code=400, detail="Cannot report a media item and a comment simultaneously.")
     return crud.create_report(db=db, report=report, reporter_id=current_user.id)
 
 # --- ADMIN-ONLY ENDPOINTS ---
@@ -699,29 +588,21 @@ def action_report(
     return crud.update_report_status(db, report=report, status=status_update.status)
 
 
-@admin_router.post("/images/{image_id}/feature", response_model=schemas.Image)
-def toggle_feature_image(
-    image_id: int,
+@admin_router.post("/media/{media_id}/feature", response_model=schemas.Media)
+def toggle_feature_media(media_id: int, db: Session = Depends(database_manager.get_db), admin_user: models.User = Depends(security.get_current_admin_user)):
+    media = crud.get_media(db, media_id=media_id)
+    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    return crud.toggle_media_featured_status(db, media=media)
+
+@admin_router.delete("/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_media_by_admin(
+    media_id: int,
     db: Session = Depends(database_manager.get_db),
     admin_user: models.User = Depends(security.get_current_admin_user)
 ):
-    image = crud.get_image(db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
-    return crud.toggle_image_featured_status(db, image=image)
-
-
-@admin_router.delete("/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_image_by_admin(
-    image_id: int,
-    db: Session = Depends(database_manager.get_db),
-    admin_user: models.User = Depends(security.get_current_admin_user)
-):
-    image = crud.get_image(db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
-    crud.delete_image(db, image=image)
-    return
+    media = crud.get_media(db, media_id=media_id)
+    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    crud.delete_media(db, media=media)
 
 @admin_router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment_by_admin(
@@ -736,16 +617,15 @@ def delete_comment_by_admin(
     return
 
 # --- Leaderboard Endpoints ---
-@leaderboard_router.get("/photos", response_model=List[schemas.Image])
-def get_leaderboard_photos(limit: int = 10, db: Session = Depends(database_manager.get_db)):
-    """ Gets the top N most liked photos. """
-    results = crud.get_top_liked_photos(db=db, limit=limit)
-    images_with_counts = []
-    for image, like_count, comment_count in results:
-        image.like_count = like_count
-        image.comment_count = comment_count
-        images_with_counts.append(image)
-    return images_with_counts
+@leaderboard_router.get("/media", response_model=List[schemas.Media]) # RENAMED from /media
+def get_leaderboard_media(limit: int = 10, db: Session = Depends(database_manager.get_db)):
+    results = crud.get_top_liked_media(db=db, limit=limit)
+    media_with_counts = []
+    for media, like_count, comment_count in results:
+        media.like_count = like_count
+        media.comment_count = comment_count
+        media_with_counts.append(media)
+    return media_with_counts
 
 @leaderboard_router.get("/users", response_model=List[schemas.User])
 def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manager.get_db)):
@@ -760,7 +640,7 @@ def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manage
 
 app.include_router(auth_router)
 app.include_router(users_router)
-app.include_router(images_router)
+app.include_router(media_router)
 app.include_router(comments_router)
 app.include_router(search_router)
 app.include_router(albums_router)

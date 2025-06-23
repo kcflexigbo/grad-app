@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import apiService from '../api/apiService';
 import { UserPlus, UserCheck, Loader2 } from 'lucide-react';
+import toast from "react-hot-toast";
+import { useNavigate } from 'react-router-dom';
 
 interface FollowButtonProps {
     userIdToFollow: number;
@@ -9,9 +11,10 @@ interface FollowButtonProps {
 }
 
 export const FollowButton = ({ userIdToFollow, initialIsFollowing }: FollowButtonProps) => {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, isLoggedIn } = useAuth();
     const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         setIsFollowing(initialIsFollowing);
@@ -22,6 +25,12 @@ export const FollowButton = ({ userIdToFollow, initialIsFollowing }: FollowButto
     }
 
     const handleFollowToggle = async () => {
+        if (!isLoggedIn) {
+            toast.error('Please log in to follow users.');
+            navigate('/login');
+            return;
+        }
+
         setIsLoading(true);
         const originalFollowState = isFollowing;
         setIsFollowing(!originalFollowState);

@@ -1,4 +1,4 @@
-import type { Image } from './image';
+import type { Media } from './media.ts';
 import type { User } from './user';
 
 export interface Album {
@@ -6,5 +6,5 @@ export interface Album {
     name: string;
     description: string | null;
     owner: User;
-    images: Image[];
+    media: Media[];
 }

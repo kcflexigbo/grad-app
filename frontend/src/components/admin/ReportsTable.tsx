@@ -26,10 +26,10 @@ export const ReportsTable = ({ reports, isLoading, showActions = true }: Reports
     });
 
     const deleteContentMutation = useMutation({
-        mutationFn: ({ type, id }: { type: 'image' | 'comment', id: number }) => {
-            const url = type === 'image' ? `/admin/images/${id}` : `/admin/comments/${id}`;
-            return apiService.delete(url);
-        },
+        mutationFn: ({ type, id }: { type: 'media' | 'comment', id: number }) => {
+        const url = type === 'media' ? `/admin/media/${id}` : `/admin/comments/${id}`;
+        return apiService.delete(url);
+    },
         onSuccess: () => {
              queryClient.invalidateQueries({ queryKey: ['admin_reports'] });
              toast.success('Content deleted successfully.');
@@ -45,8 +45,8 @@ export const ReportsTable = ({ reports, isLoading, showActions = true }: Reports
 
     const handleDelete = (report: Report) => {
         if (window.confirm('Are you sure you want to permanently delete this content? This cannot be undone.')) {
-            const type = report.reported_image_id ? 'image' : 'comment';
-            const id = report.reported_image_id || report.reported_comment_id;
+            const type = report.reported_media_id ? 'media' : 'comment';
+            const id = report.reported_media_id || report.reported_comment_id;
             if (id) {
                 deleteContentMutation.mutate({ type, id });
             }
@@ -92,10 +92,10 @@ export const ReportsTable = ({ reports, isLoading, showActions = true }: Reports
                         <tr key={report.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 <Link
-                                    to={report.reported_image_id ? `/photo/${report.reported_image_id}` : '#'}
+                                    to={report.reported_media_id ? `/media/${report.reported_media_id}` : '#'}
                                     className="text-blue-600 hover:underline"
                                 >
-                                    {report.reported_image_id ? `Image #${report.reported_image_id}` : `Comment #${report.reported_comment_id}`}
+                                    {report.reported_media_id ? `Media #${report.reported_media_id}` : `Comment #${report.reported_comment_id}`}
                                 </Link>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate" title={report.reason ?? undefined}>{report.reason}</td>

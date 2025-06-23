@@ -1,14 +1,14 @@
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiService from '../api/apiService';
-import { ImageGrid } from '../components/ImageGrid';
+import { MediaGrid } from '../components/MediaGrid.tsx';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import type { User } from '../types/user';
-import type { Image } from '../types/image';
+import type { Media } from '../types/media.ts';
 
 interface SearchResults {
     users: User[];
-    photos: Image[];
+    media: Media[];
 }
 
 const fetchSearchResults = async (query: string): Promise<SearchResults> => {
@@ -39,7 +39,7 @@ export const SearchPage = () => {
         return <div className="text-red-500">Error fetching search results.</div>;
     }
 
-    const noResults = !data || (data.users.length === 0 && data.photos.length === 0);
+    const noResults = !data || (data.users.length === 0 && data.media.length === 0);
 
     return (
         <div className="space-y-12">
@@ -69,10 +69,10 @@ export const SearchPage = () => {
                         </section>
                     )}
 
-                    {data.photos.length > 0 && (
+                    {data.media.length > 0 && (
                         <section>
-                            <h2 className="text-2xl font-semibold mb-4">Photos</h2>
-                            <ImageGrid images={data.photos} />
+                            <h2 className="text-2xl font-semibold mb-4">Media</h2>
+                            <MediaGrid mediaItems={data.media} />
                         </section>
                     )}
                 </div>

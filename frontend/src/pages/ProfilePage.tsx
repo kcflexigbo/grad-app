@@ -1,45 +1,39 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import {useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import apiService from '../api/apiService';
 import type { User } from '../types/user';
-import type { Image } from '../types/image';
-// import type { Album } from '../types/album'; // No longer need the full album type here
+import type { Media } from '../types/media'; // Use Media type
 import { Camera, BookCopy, Plus, Trash2 } from 'lucide-react';
 
-// Import required components
-import { ImageGrid } from '../components/ImageGrid';
+import { MediaGrid } from '../components/MediaGrid'; // Use MediaGrid
 import { SkeletonLoader as GridSkeletonLoader } from '../components/ui/SkeletonLoader';
 import { FollowButton } from '../components/FollowButton';
 import { useAuth } from '../hooks/useAuth';
 import { ProfilePictureModal } from '../components/ProfilePictureModal';
 import { CreateAlbumModal } from "../components/CreateAlbumModal.tsx";
 
-// --- MODIFICATION: New interface for the album summary ---
 interface AlbumSummary {
     id: number;
     name: string;
     description: string | null;
-    image_count: number;
+    media_count: number;
 }
 
-
 interface UserProfile extends User {
-    images: Image[];
+    media: Media[];
     followers_count: number;
     following_count: number;
     albums: AlbumSummary[];
     is_followed_by_current_user?: boolean;
 }
 
-// Data fetching function for React Query
 const fetchProfile = async (username: string): Promise<UserProfile> => {
     const { data } = await apiService.get<UserProfile>(`/users/profile/${username}`);
     return data;
 };
 
-// A new, custom skeleton loader specifically for the Profile Page header
 const ProfileHeaderSkeleton = () => (
     <header className="flex flex-col md:flex-row items-center gap-8 animate-pulse">
         <div className="w-32 h-32 bg-gray-300 rounded-full"></div>
@@ -68,7 +62,7 @@ export const ProfilePage = () => {
 
     const [isPfpModalOpen, setIsPfpModalOpen] = useState(false);
     const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'photos' | 'albums'>('photos');
+    const [activeTab, setActiveTab] = useState<'media' | 'albums'>('media'); // Renamed
 
     const { data: profile, isLoading, isError, error } = useQuery({
         queryKey: ['profile', username],
@@ -105,7 +99,6 @@ export const ProfilePage = () => {
         }
     };
 
-    // --- Loading State ---
     if (isLoading) {
         return (
             <div className="space-y-12">
@@ -116,25 +109,21 @@ export const ProfilePage = () => {
         );
     }
 
-    // --- Error State ---
     if (isError) {
         return <div className="text-center text-red-500 py-10 text-xl">{(error as any).message || "This user profile could not be found."}</div>;
     }
 
-    // --- Not Found State ---
     if (!profile) {
         return <div className="text-center text-gray-500 py-10 text-xl">Profile not found.</div>;
     }
 
-    // --- Success State ---
     return (
         <>
             <div className="space-y-12">
-                {/* Profile Header Section */}
                 <header className="flex flex-col md:flex-row items-center gap-8">
                      <button onClick={() => setIsPfpModalOpen(true)} className="flex-shrink-0">
                             <img
-                                src={profile.profile_picture_url || 'https://via.placeholder.com/128'}
+                                src={profile.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'}
                                 alt={profile.username}
                                 className="w-32 h-32 rounded-full object-cover ring-4 ring-white shadow-lg cursor-pointer transition-transform hover:scale-105"
                             />
@@ -142,12 +131,6 @@ export const ProfilePage = () => {
                     <div className="flex-grow text-center md:text-left">
                         <div className="flex items-center justify-center md:justify-start gap-4">
                             <h1 className="text-3xl font-bold text-gray-800">{profile.username}</h1>
-                            {/*{isOwnProfile ? (*/}
-                            {/*    // <button className="bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-md hover:bg-gray-300">*/}
-                            {/*    //     Edit Profile*/}
-                            {/*    // </button>*/}
-                            {/*) : (*/}
-                            {/*    // --- REUSABLE FOLLOW BUTTON ---*/}
                             {!isOwnProfile && (
                                 <FollowButton
                                     userIdToFollow={profile.id}
@@ -157,7 +140,7 @@ export const ProfilePage = () => {
                         </div>
                         <div className="flex justify-center md:justify-start gap-6 mt-4 text-gray-600">
                             <span className="text-center">
-                                <span className="font-bold block text-lg text-brand-dark">{profile.images.length}</span>
+                                <span className="font-bold block text-lg text-brand-dark">{profile.media.length}</span>
                                 <span className="text-sm">posts</span>
                             </span>
                             <Link to={`/profile/${profile.username}/followers`} className="text-center hover:text-brand-accent transition-colors">
@@ -178,9 +161,9 @@ export const ProfilePage = () => {
                 <div className="border-b border-gray-200">
                     <nav className="-mb-px flex justify-center space-x-8" aria-label="Tabs">
                         <button
-                            onClick={() => setActiveTab('photos')}
+                            onClick={() => setActiveTab('media')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                                activeTab === 'photos' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                activeTab === 'media' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                         >
                             <Camera size={16} /> Posts
@@ -197,18 +180,16 @@ export const ProfilePage = () => {
                 </div>
 
                 <main>
-                    {/* User's Photo Grid Section */}
-                    {activeTab === 'photos' && (
-                        profile.images.length > 0 ? (
-                            <ImageGrid images={profile.images} />
+                    {activeTab === 'media' && (
+                        profile.media.length > 0 ? (
+                            <MediaGrid mediaItems={profile.media} />
                         ) : (
                             <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">
-                                This user hasn't posted any photos yet.
+                                This user hasn't posted any media yet.
                             </div>
                         )
                     )}
 
-                    {/* User's Album Grid Section */}
                     {activeTab === 'albums' && (
                         <div className="space-y-6">
                             {isOwnProfile && (
@@ -217,8 +198,7 @@ export const ProfilePage = () => {
                                         onClick={() => setIsAlbumModalOpen(true)}
                                         className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700"
                                     >
-                                        <Plus size={18} />
-                                        Create New Album
+                                        <Plus size={18} /> Create New Album
                                     </button>
                                 </div>
                             )}
@@ -229,8 +209,7 @@ export const ProfilePage = () => {
                                             <Link to={`/album/${album.id}`} className="block p-4 bg-white border rounded-lg hover:shadow-lg transition-shadow">
                                                 <h3 className="font-bold text-lg truncate">{album.name}</h3>
                                                 <p className="text-sm text-gray-600 mt-1 truncate h-10">{album.description || 'No description'}</p>
-                                                {/* --- MODIFICATION: Use the new image_count property --- */}
-                                                <p className="text-xs text-gray-400 mt-4">{album.image_count} photos</p>
+                                                <p className="text-xs text-gray-400 mt-4">{album.media_count} items</p>
                                             </Link>
                                             {isOwnProfile && (
                                                 <button
@@ -252,25 +231,14 @@ export const ProfilePage = () => {
                         </div>
                     )}
                 </main>
-
-                {/*<main>*/}
-                {/*    <h2 className="text-xl font-semibold text-center mb-6 uppercase tracking-wider text-gray-500">Posts</h2>*/}
-                {/*    {profile.images.length > 0 ? (*/}
-                {/*        <ImageGrid images={profile.images} />*/}
-                {/*    ) : (*/}
-                {/*        <div className="text-center text-gray-500 py-10 bg-gray-50 rounded-lg">*/}
-                {/*            This user hasn't posted any photos yet.*/}
-                {/*        </div>*/}
-                {/*    )}*/}
-                {/*</main>*/}
             </div>
 
             <ProfilePictureModal
-                    isOpen={isPfpModalOpen}
-                    onClose={() => setIsPfpModalOpen(false)}
-                    imageUrl={profile.profile_picture_url || 'https://via.placeholder.com/128'}
-                    isOwnProfile={isOwnProfile}
-                    onUploadSuccess={handleUploadSuccess}
+                isOpen={isPfpModalOpen}
+                onClose={() => setIsPfpModalOpen(false)}
+                imageUrl={profile.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'}
+                isOwnProfile={isOwnProfile}
+                onUploadSuccess={handleUploadSuccess}
             />
 
             {isOwnProfile && (

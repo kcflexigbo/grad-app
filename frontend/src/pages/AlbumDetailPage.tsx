@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast'; // Import toast
 import { Trash2 } from 'lucide-react'; // Import Trash2 icon
 import apiService from '../api/apiService';
-import { ImageGrid } from '../components/ImageGrid';
+import { MediaGrid } from '../components/MediaGrid.tsx';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { useAuth } from '../hooks/useAuth';
 import type { Album as AlbumType } from '../types/album';
@@ -46,19 +46,19 @@ export const AlbumDetailPage = () => {
     };
 
      const removeImageMutation = useMutation({
-        mutationFn: (imageId: number) => apiService.delete(`/albums/${id}/images/${imageId}`),
+        mutationFn: (mediaId: number) => apiService.delete(`/albums/${id}/media/${mediaId}`),
         onSuccess: () => {
-            toast.success("Image removed from album.");
+            toast.success("Media removed from album.");
             queryClient.invalidateQueries({ queryKey: ['album', id] });
         },
         onError: () => {
-            toast.error("Failed to remove image.");
+            toast.error("Failed to remove media.");
         }
     });
 
-    const handleRemoveFromAlbum = (imageId: number) => {
-        if (window.confirm("Are you sure you want to remove this image from the album? (The image itself will not be deleted)")) {
-            removeImageMutation.mutate(imageId);
+    const handleRemoveFromAlbum = (mediaId: number) => {
+        if (window.confirm("Are you sure you want to remove this media from the album? (The media itself will not be deleted)")) {
+            removeImageMutation.mutate(mediaId);
         }
     };
 
@@ -105,8 +105,8 @@ export const AlbumDetailPage = () => {
             </header>
 
             <main>
-                {album.images.length > 0 ? (
-                    <ImageGrid images={album.images}
+                {album.media.length > 0 ? (
+                    <MediaGrid mediaItems={album.media}
                     onRemoveFromAlbum={isOwner ? handleRemoveFromAlbum : undefined}
                     />
                 ) : (

@@ -5,7 +5,7 @@ from sqlalchemy import func, or_
 import schemas, security, models
 
 
-# --- User CRUD Functions ---
+# --- User CRUD Functions (Largely Unchanged) ---
 
 def get_user(db: Session, user_id: int):
     """Retrieves a single user by their ID."""
@@ -43,42 +43,41 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def get_user_albums(db: Session, user_id: int) -> List[models.Album]:
     """Retrieves all albums owned by a specific user."""
-    print("me called")
     return db.query(models.Album).filter(models.Album.owner_id == user_id).all()
 
 
 # --- Leaderboard CRUD Functions ---
-def get_top_liked_photos(db: Session, limit: int = 10):
+
+def get_top_liked_media(db: Session, limit: int = 10):
     """
-    Retrieves a list of the most liked photos.
-    This reuses the logic from get_images with a specific sort and limit.
+    Retrieves a list of the most liked media (media and videos).
     """
     comment_count_subquery = (
         db.query(
-            models.Comment.image_id,
+            models.Comment.media_id,
             func.count(models.Comment.id).label("comment_count")
         )
-        .group_by(models.Comment.image_id)
+        .group_by(models.Comment.media_id)
         .subquery()
     )
 
     like_count_subquery = (
         db.query(
-            models.Like.image_id,
+            models.Like.media_id,
             func.count(models.Like.user_id).label("like_count")
         )
-        .group_by(models.Like.image_id)
+        .group_by(models.Like.media_id)
         .subquery()
     )
 
     query = (
         db.query(
-            models.Image,
+            models.Media,
             func.coalesce(like_count_subquery.c.like_count, 0).label("like_count"),
             func.coalesce(comment_count_subquery.c.comment_count, 0).label("comment_count")
         )
-        .outerjoin(like_count_subquery, models.Image.id == like_count_subquery.c.image_id)
-        .outerjoin(comment_count_subquery, models.Image.id == comment_count_subquery.c.image_id)
+        .outerjoin(like_count_subquery, models.Media.id == like_count_subquery.c.media_id)
+        .outerjoin(comment_count_subquery, models.Media.id == comment_count_subquery.c.media_id)
         .order_by(func.coalesce(like_count_subquery.c.like_count, 0).desc())
     )
 
@@ -87,7 +86,7 @@ def get_top_liked_photos(db: Session, limit: int = 10):
 
 def get_most_followed_users(db: Session, limit: int = 10):
     """
-    Retrieves a list of the most followed users.
+    Retrieves a list of the most followed users. (Unchanged)
     """
     return (
         db.query(
@@ -131,87 +130,87 @@ def update_user_password(db: Session, user: models.User, new_password: str):
     return user
 
 
-# --- Image CRUD Functions ---
+# --- Media CRUD Functions (Previously Media CRUD) ---
 
-def get_image(db: Session, image_id: int):
-    """Retrieves a single image by its ID."""
-    return db.query(models.Image).filter(models.Image.id == image_id).first()
+def get_media(db: Session, media_id: int):
+    """Retrieves a single media item by its ID."""
+    return db.query(models.Media).filter(models.Media.id == media_id).first()
 
 
-def get_images(db: Session, sort_by: str = "newest", skip: int = 0, limit: int = 20):
+def get_all_media(db: Session, sort_by: str = "newest", skip: int = 0, limit: int = 20):
     """
-    Retrieves a paginated list of all images, with different sorting options,
-    and pre-calculates like and comment counts in a single query to avoid the N+1 problem.
+    Retrieves a paginated list of all media, with sorting options,
+    and pre-calculates like and comment counts.
     """
     comment_count_subquery = (
         db.query(
-            models.Comment.image_id,
+            models.Comment.media_id,
             func.count(models.Comment.id).label("comment_count")
         )
-        .group_by(models.Comment.image_id)
+        .group_by(models.Comment.media_id)
         .subquery()
     )
 
     like_count_subquery = (
         db.query(
-            models.Like.image_id,
+            models.Like.media_id,
             func.count(models.Like.user_id).label("like_count")
         )
-        .group_by(models.Like.image_id)
+        .group_by(models.Like.media_id)
         .subquery()
     )
 
     query = (
         db.query(
-            models.Image,
+            models.Media,
             func.coalesce(like_count_subquery.c.like_count, 0).label("like_count"),
             func.coalesce(comment_count_subquery.c.comment_count, 0).label("comment_count")
         )
-        .outerjoin(like_count_subquery, models.Image.id == like_count_subquery.c.image_id)
-        .outerjoin(comment_count_subquery, models.Image.id == comment_count_subquery.c.image_id)
+        .outerjoin(like_count_subquery, models.Media.id == like_count_subquery.c.media_id)
+        .outerjoin(comment_count_subquery, models.Media.id == comment_count_subquery.c.media_id)
     )
 
     if sort_by == "popular":
         query = query.order_by(func.coalesce(like_count_subquery.c.like_count, 0).desc())
     elif sort_by == "featured":
-        query = query.filter(models.Image.is_featured == True).order_by(
-            models.Image.created_at.desc()
+        query = query.filter(models.Media.is_featured == True).order_by(
+            models.Media.created_at.desc()
         )
     else:
-        query = query.order_by(models.Image.created_at.desc())
+        query = query.order_by(models.Media.created_at.desc())
 
     return query.offset(skip).limit(limit).all()
 
 
-def create_image(db: Session, owner_id: int, image_url: str, caption: str):
-    """Creates a new image record in the database."""
-    db_image = models.Image(
+def create_media(db: Session, owner_id: int, media_url: str, caption: str, media_type: models.MediaType):
+    """Creates a new media record in the database."""
+    db_media = models.Media(
         owner_id=owner_id,
-        image_url=image_url,
-        caption=caption
+        media_url=media_url,
+        caption=caption,
+        media_type=media_type
     )
-    db.add(db_image)
+    db.add(db_media)
     db.commit()
-    db.refresh(db_image)
-    return db_image
+    db.refresh(db_media)
+    return db_media
 
 
-def delete_image(db: Session, image: models.Image):
-    """Deletes an image from the database."""
-    db.delete(image)
+def delete_media(db: Session, media: models.Media):
+    """Deletes a media item from the database."""
+    db.delete(media)
     db.commit()
     return True
 
 
-def update_image(db: Session, image: models.Image, image_update: schemas.ImageUpdate) -> models.Image:
-    """Updates an image's data based on the provided schema."""
-    # model_dump(exclude_unset=True) ensures we only update fields that were actually sent
-    update_data = image_update.model_dump(exclude_unset=True)
+def update_media(db: Session, media: models.Media, media_update: schemas.MediaUpdate) -> models.Media:
+    """Updates a media item's data based on the provided schema."""
+    update_data = media_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        setattr(image, key, value)
+        setattr(media, key, value)
     db.commit()
-    db.refresh(image)
-    return image
+    db.refresh(media)
+    return media
 
 
 # --- Tag CRUD Functions ---
@@ -240,19 +239,19 @@ def get_or_create_tags(db: Session, tags: list[str]) -> list[models.Tag]:
     return tag_models
 
 
-def associate_tags_with_image(db: Session, image: models.Image, tags: list[models.Tag]):
-    """Associates a list of Tag models with an Image model."""
-    image.tags.extend(tag for tag in tags if tag not in image.tags)
+def associate_tags_with_media(db: Session, media: models.Media, tags: list[models.Tag]):
+    """Associates a list of Tag models with a Media model."""
+    media.tags.extend(tag for tag in tags if tag not in media.tags)
     db.commit()
 
 
 # --- Comment CRUD Functions ---
 
-def create_comment(db: Session, comment: schemas.CommentCreate, image_id: int, author_id: int):
-    """Creates a new comment on an image."""
+def create_comment(db: Session, comment: schemas.CommentCreate, media_id: int, author_id: int):
+    """Creates a new comment on a media item."""
     db_comment = models.Comment(
         **comment.model_dump(),
-        image_id=image_id,
+        media_id=media_id,
         author_id=author_id
     )
     db.add(db_comment)
@@ -261,28 +260,28 @@ def create_comment(db: Session, comment: schemas.CommentCreate, image_id: int, a
     return db_comment
 
 
-def get_comments_for_image(db: Session, image_id: int, skip: int = 0, limit: int = 50):
-    """Retrieves comments for a specific image."""
-    return (db.query(models.Comment).filter(models.Comment.image_id == image_id).
+def get_comments_for_media(db: Session, media_id: int, skip: int = 0, limit: int = 50):
+    """Retrieves comments for a specific media item."""
+    return (db.query(models.Comment).filter(models.Comment.media_id == media_id).
             order_by(models.Comment.created_at.asc()).offset(skip).limit(limit).all())
 
 
-def get_comment_count_for_image(db: Session, image_id: int) -> int:
-    """Gets the total number of comments for an image."""
-    return db.query(models.Comment).filter(models.Comment.image_id == image_id).count()
+def get_comment_count_for_media(db: Session, media_id: int) -> int:
+    """Gets the total number of comments for a media item."""
+    return db.query(models.Comment).filter(models.Comment.media_id == media_id).count()
 
 
 # --- Like CRUD Functions ---
 
-def get_like(db: Session, user_id: int, image_id: int):
+def get_like(db: Session, user_id: int, media_id: int):
     """Checks if a specific like exists."""
     return db.query(models.Like).filter(models.Like.user_id == user_id,
-                                        models.Like.image_id == image_id).first()
+                                        models.Like.media_id == media_id).first()
 
 
-def create_like(db: Session, user_id: int, image_id: int):
+def create_like(db: Session, user_id: int, media_id: int):
     """Creates a like record."""
-    db_like = models.Like(user_id=user_id, image_id=image_id)
+    db_like = models.Like(user_id=user_id, media_id=media_id)
     db.add(db_like)
     db.commit()
     db.refresh(db_like)
@@ -296,9 +295,10 @@ def delete_like(db: Session, like: models.Like):
     return True
 
 
-def get_like_count_for_image(db: Session, image_id: int) -> int:
-    """Gets the total number of likes for an image."""
-    return db.query(models.Like).filter(models.Like.image_id == image_id).count()
+def get_like_count_for_media(db: Session, media_id: int) -> int:
+    """Gets the total number of likes for a media item."""
+    return db.query(models.Like).filter(models.Like.media_id == media_id).count()
+
 
 
 # --- Follow CRUD Functions ---
@@ -324,11 +324,19 @@ def delete_follow(db: Session, follow: models.Follow):
     db.commit()
     return True
 
+def get_follower_count_for_user(db: Session, user_id: int) -> int:
+    """Gets the number of followers a user has."""
+    return db.query(models.Follow).filter(models.Follow.following_id == user_id).count()
 
+
+def get_following_count_for_user(db: Session, user_id: int) -> int:
+    """Gets the number of users a user is following."""
+    return db.query(models.Follow).filter(models.Follow.follower_id == user_id).count()
+
+# --- Notification CRUD Functions  ---
 def create_notification(db: Session, recipient_id: int, actor_id: int, type: models.NotificationType,
                         related_entity_id: int):
     """Creates a notification for a user action."""
-    # Avoid creating a notification if a user interacts with their own content
     if recipient_id == actor_id:
         return None
 
@@ -342,17 +350,6 @@ def create_notification(db: Session, recipient_id: int, actor_id: int, type: mod
     db.commit()
     db.refresh(db_notification)
     return db_notification
-
-
-def get_follower_count_for_user(db: Session, user_id: int) -> int:
-    """Gets the number of followers a user has."""
-    return db.query(models.Follow).filter(models.Follow.following_id == user_id).count()
-
-
-def get_following_count_for_user(db: Session, user_id: int) -> int:
-    """Gets the number of users a user is following."""
-    return db.query(models.Follow).filter(models.Follow.follower_id == user_id).count()
-
 
 # --- Album CRUD Functions ---
 
@@ -370,7 +367,6 @@ def get_album(db: Session, album_id: int):
     return db.query(models.Album).filter(models.Album.id == album_id).first()
 
 
-# --- NEW: Function to delete an album ---
 def delete_album(db: Session, album: models.Album):
     """Deletes an album from the database."""
     db.delete(album)
@@ -378,18 +374,18 @@ def delete_album(db: Session, album: models.Album):
     return True
 
 
-def add_image_to_album(db: Session, image: models.Image, album: models.Album):
-    """Adds an image to an album if it's not already there."""
-    if image not in album.images:
-        album.images.append(image)
+def add_media_to_album(db: Session, media: models.Media, album: models.Album):
+    """Adds a media item to an album if it's not already there."""
+    if media not in album.media:
+        album.media.append(media)
         db.commit()
     return album
 
 
-def remove_image_from_album(db: Session, image: models.Image, album: models.Album):
-    """Removes an image from an album if it is present."""
-    if image in album.images:
-        album.images.remove(image)
+def remove_media_from_album(db: Session, media: models.Media, album: models.Album):
+    """Removes a media item from an album if it is present."""
+    if media in album.media:
+        album.media.remove(media)
         db.commit()
     return album
 
@@ -398,7 +394,7 @@ def remove_image_from_album(db: Session, image: models.Image, album: models.Albu
 
 def search_content(db: Session, query: str, limit: int = 20):
     """
-    Searches for users by username and photos by caption or tag.
+    Searches for users by username and media by caption or tag.
     """
     search_term = f"%{query.lower()}%"
 
@@ -409,21 +405,21 @@ def search_content(db: Session, query: str, limit: int = 20):
         .all()
     )
 
-    photos = (
-        db.query(models.Image)
-        .outerjoin(models.Image.tags)
+    media_items = (
+        db.query(models.Media)
+        .outerjoin(models.Media.tags)
         .filter(
             or_(
-                models.Image.caption.ilike(search_term),
+                models.Media.caption.ilike(search_term),
                 models.Tag.name.ilike(search_term)
             )
         )
-        .distinct(models.Image.id)
+        .distinct(models.Media.id)
         .limit(limit)
         .all()
     )
 
-    return {"users": users, "photos": photos}
+    return {"users": users, "media": media_items}
 
 
 def get_notification(db: Session, notification_id: int):
@@ -493,12 +489,12 @@ def update_report_status(db: Session, report: models.Report, status: models.Repo
     return report
 
 
-def toggle_image_featured_status(db: Session, image: models.Image) -> models.Image:
-    """Flips the 'is_featured' boolean on an image."""
-    image.is_featured = not image.is_featured
+def toggle_media_featured_status(db: Session, media: models.Media) -> models.Media:
+    """Flips the 'is_featured' boolean on a media item."""
+    media.is_featured = not media.is_featured
     db.commit()
-    db.refresh(image)
-    return image
+    db.refresh(media)
+    return media
 
 
 def get_comment(db: Session, comment_id: int) -> models.Comment:

@@ -1,4 +1,3 @@
-// C:/Users/kcfle/Documents/React Projects/grad-app/frontend/src/components/layout/Navbar.tsx
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Bell, Upload, Search, Settings, User as UserIcon, LogOut, Crown } from 'lucide-react';
@@ -81,7 +80,7 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
 
                                 <div className="relative" ref={dropdownRef}>
                                     <button onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                                        <img src={user.profile_picture_url || 'https://via.placeholder.com/40'} alt={`${user.username}'s profile`} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-transparent hover:border-brand-accent transition-all" />
+                                        <img src={user.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'} alt={`${user.username}'s profile`} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-transparent hover:border-brand-accent transition-all" />
                                     </button>
 
                                     {isDropdownOpen && (

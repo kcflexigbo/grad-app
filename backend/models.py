@@ -7,6 +7,13 @@ from sqlalchemy.sql import func
 import enum
 from database_manager import Base
 
+
+# --- NEW: Enum to distinguish between media types ---
+class MediaType(enum.Enum):
+    image = 'image'
+    video = 'video'
+
+
 class NotificationType(enum.Enum):
     like = 'like'
     comment = 'comment'
@@ -19,15 +26,19 @@ class ReportStatus(enum.Enum):
     resolved = 'resolved'
     dismissed = 'dismissed'
 
-image_tags = Table('image_tags', Base.metadata,
-                   Column('image_id', Integer, ForeignKey('images.id', ondelete="CASCADE"), primary_key=True),
+
+# --- RENAMED: from image_tags to media_tags ---
+media_tags = Table('media_tags', Base.metadata,
+                   Column('media_id', Integer, ForeignKey('media.id', ondelete="CASCADE"), primary_key=True),
                    Column('tag_id', Integer, ForeignKey('tags.id', ondelete="CASCADE"), primary_key=True)
                    )
 
-image_albums = Table('image_albums', Base.metadata,
-                     Column('image_id', Integer, ForeignKey('images.id', ondelete="CASCADE"), primary_key=True),
+# --- RENAMED: from image_albums to media_albums ---
+media_albums = Table('media_albums', Base.metadata,
+                     Column('media_id', Integer, ForeignKey('media.id', ondelete="CASCADE"), primary_key=True),
                      Column('album_id', Integer, ForeignKey('albums.id', ondelete="CASCADE"), primary_key=True)
                      )
+
 
 class User(Base):
     __tablename__ = "users"
@@ -43,7 +54,8 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    images = relationship("Image", back_populates="owner", cascade="all, delete-orphan")
+    # --- RENAMED: from 'media' to 'media' ---
+    media = relationship("Media", back_populates="owner", cascade="all, delete-orphan")
     albums = relationship("Album", back_populates="owner", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="author", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
@@ -59,24 +71,30 @@ class User(Base):
                              cascade="all, delete-orphan")
 
 
-class Image(Base):
-    __tablename__ = "images"
+# --- RENAMED: from Media to Media ---
+class Media(Base):
+    __tablename__ = "media"  # Table renamed from 'media'
 
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    image_url = Column(String(255), nullable=False)
+
+    # --- RENAMED: from image_url to media_url ---
+    media_url = Column(String(255), nullable=False)
+
+    # --- NEW: Column to store the type of media ---
+    media_type = Column(PyEnum(MediaType), nullable=False, default=MediaType.image)
+
     caption = Column(Text, nullable=True)
-    # --- MODIFIED: Added index=True for featured sort performance ---
     is_featured = Column(Boolean, nullable=False, default=False, index=True)
-    # --- MODIFIED: Added index=True for newest sort performance ---
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-    owner = relationship("User", back_populates="images")
-    comments = relationship("Comment", back_populates="image", cascade="all, delete-orphan")
-    likes = relationship("Like", back_populates="image", cascade="all, delete-orphan")
-    reports = relationship("Report", back_populates="reported_image", cascade="all, delete-orphan")
-    tags = relationship("Tag", secondary=image_tags, back_populates="images")
-    albums = relationship("Album", secondary=image_albums, back_populates="images")
+    # --- UPDATED: Relationships now point to/from 'Media' ---
+    owner = relationship("User", back_populates="media")
+    comments = relationship("Comment", back_populates="media_item", cascade="all, delete-orphan")
+    likes = relationship("Like", back_populates="media_item", cascade="all, delete-orphan")
+    reports = relationship("Report", back_populates="reported_media", cascade="all, delete-orphan")
+    tags = relationship("Tag", secondary=media_tags, back_populates="media")
+    albums = relationship("Album", secondary=media_albums, back_populates="media")
 
 
 class Album(Base):
@@ -89,7 +107,8 @@ class Album(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="albums")
-    images = relationship("Image", secondary=image_albums, back_populates="albums")
+    # --- RENAMED: from 'media' to 'media' ---
+    media = relationship("Media", secondary=media_albums, back_populates="albums")
 
 
 class Tag(Base):
@@ -98,7 +117,8 @@ class Tag(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False, index=True)
 
-    images = relationship("Image", secondary=image_tags, back_populates="tags")
+    # --- RENAMED: from 'media' to 'media' ---
+    media = relationship("Media", secondary=media_tags, back_populates="tags")
 
 
 class Comment(Base):
@@ -106,12 +126,16 @@ class Comment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    image_id = Column(Integer, ForeignKey("images.id", ondelete="CASCADE"), nullable=False)
+
+    # --- RENAMED: from image_id to media_id, ForeignKey updated ---
+    media_id = Column(Integer, ForeignKey("media.id", ondelete="CASCADE"), nullable=False)
+
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     author = relationship("User", back_populates="comments")
-    image = relationship("Image", back_populates="comments")
+    # --- RENAMED: from 'image' to 'media_item' for clarity ---
+    media_item = relationship("Media", back_populates="comments")
     reports = relationship("Report", back_populates="reported_comment", cascade="all, delete-orphan")
 
 
@@ -119,36 +143,35 @@ class Like(Base):
     __tablename__ = "likes"
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    image_id = Column(Integer, ForeignKey("images.id", ondelete="CASCADE"), primary_key=True)
+    # --- RENAMED: from image_id to media_id, ForeignKey updated ---
+    media_id = Column(Integer, ForeignKey("media.id", ondelete="CASCADE"), primary_key=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="likes")
-    image = relationship("Image", back_populates="likes")
+    # --- RENAMED: from 'image' to 'media_item' for clarity ---
+    media_item = relationship("Media", back_populates="likes")
 
 
 class Follow(Base):
     __tablename__ = "follows"
-
+    # ... (No changes needed in this model) ...
     follower_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     following_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
     follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
     followed_by = relationship("User", foreign_keys=[following_id], back_populates="followers")
 
 
 class Notification(Base):
     __tablename__ = "notifications"
-
+    # ... (No changes needed, as related_entity_id is generic) ...
     id = Column(Integer, primary_key=True, index=True)
-    # --- MODIFIED: Added index=True for faster notification lookups ---
     recipient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     actor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     type = Column(PyEnum(NotificationType), nullable=False)
-    related_entity_id = Column(Integer, nullable=True)
+    related_entity_id = Column(Integer, nullable=True)  # This ID now refers to media.id for likes/comments
     is_read = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
     recipient = relationship("User", foreign_keys=[recipient_id], back_populates="notifications_received")
     actor = relationship("User", foreign_keys=[actor_id], back_populates="actions_caused")
 
@@ -158,12 +181,14 @@ class Report(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     reporter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    reported_image_id = Column(Integer, ForeignKey("images.id", ondelete="CASCADE"), nullable=True)
+
+    reported_media_id = Column(Integer, ForeignKey("media.id", ondelete="CASCADE"), nullable=True)
     reported_comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     reason = Column(Text, nullable=True)
     status = Column(PyEnum(ReportStatus), nullable=False, default=ReportStatus.pending)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     reporter = relationship("User", back_populates="reports_made")
-    reported_image = relationship("Image", back_populates="reports")
+    # --- RENAMED and relationship back_populates updated ---
+    reported_media = relationship("Media", back_populates="reports")
     reported_comment = relationship("Comment", back_populates="reports")

@@ -7,17 +7,17 @@ import apiService from '../api/apiService';
 interface ReportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    reportedImageId?: number;
+    reportedMediaId?: number;
     reportedCommentId?: number;
 }
 
 interface ReportPayload {
-    reported_image_id?: number;
+    reported_media_id?: number;
     reported_comment_id?: number;
     reason: string;
 }
 
-export const ReportModal = ({ isOpen, onClose, reportedImageId, reportedCommentId }: ReportModalProps) => {
+export const ReportModal = ({ isOpen, onClose, reportedMediaId, reportedCommentId }: ReportModalProps) => {
     const [reason, setReason] = useState('');
 
     const reportMutation = useMutation({
@@ -40,8 +40,8 @@ export const ReportModal = ({ isOpen, onClose, reportedImageId, reportedCommentI
         }
 
         const payload: ReportPayload = { reason };
-        if (reportedImageId) {
-            payload.reported_image_id = reportedImageId;
+        if (reportedMediaId) {
+            payload.reported_media_id = reportedMediaId;
         } else if (reportedCommentId) {
             payload.reported_comment_id = reportedCommentId;
         } else {
@@ -59,7 +59,7 @@ export const ReportModal = ({ isOpen, onClose, reportedImageId, reportedCommentI
 
     if (!isOpen) return null;
 
-    const reportingWhat = reportedImageId ? 'this image' : 'this comment';
+    const reportingWhat = reportedMediaId ? 'this media' : 'this comment';
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
