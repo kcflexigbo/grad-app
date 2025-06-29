@@ -24,7 +24,6 @@ app = FastAPI(title="Graduation Social Gallery API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-
 # --- Routers for Organization ---
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 users_router = APIRouter(prefix="/users", tags=["Users"])
@@ -47,27 +46,37 @@ origins = [
     # "https://www.ratemypix.cn"
     "https://www.ratemygradpix.xin",
     "https://ratemygradpix.xin",
+    "https://ratemypix.site",
+    "https://www.ratemypix.site",
 ]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"],
+                   allow_headers=["*"])
+
 
 # --- General & WebSocket Endpoints ---
 @app.get("/", tags=["General"])
 def read_root():
     return {"message": "Welcome to the Graduation Social Gallery API"}
 
+
 @app.get("/healthz", tags=["General"])
 async def healthz() -> Dict[str, str]:
     return {"status": "OK"}
 
+
 @app.websocket("/ws/notifications")
-async def websocket_notifications_endpoint(websocket: WebSocket, token: str, db: Session = Depends(database_manager.get_db)):
+async def websocket_notifications_endpoint(websocket: WebSocket, token: str,
+                                           db: Session = Depends(database_manager.get_db)):
     try:
         current_user = security.get_current_user(token=token, db=db)
         await manager.connect(current_user.id, websocket)
         try:
             while True: await websocket.receive_text()
-        except WebSocketDisconnect: manager.disconnect(current_user.id)
-    except Exception: await websocket.close()
+        except WebSocketDisconnect:
+            manager.disconnect(current_user.id)
+    except Exception:
+        await websocket.close()
+
 
 @app.websocket("/ws/comments/{media_id}")  # RENAMED from image_id
 async def websocket_comments_endpoint(websocket: WebSocket, media_id: int):
@@ -75,12 +84,15 @@ async def websocket_comments_endpoint(websocket: WebSocket, media_id: int):
     await manager.connect_to_room(room_name, websocket)
     try:
         while True: await websocket.receive_text()
-    except WebSocketDisconnect: manager.disconnect_from_room(room_name, websocket)
+    except WebSocketDisconnect:
+        manager.disconnect_from_room(room_name, websocket)
+
 
 # --- Authentication Endpoints ---
 @auth_router.post("/register", response_model=schemas.User)
 @limiter.limit("10/hour")
-def register_user(request: Request, user: schemas.UserCreate, db: Session = Depends(database_manager.get_db)) -> models.User:
+def register_user(request: Request, user: schemas.UserCreate,
+                  db: Session = Depends(database_manager.get_db)) -> models.User:
     db_user_by_email = crud.get_user_by_email(db, email=str(user.email))
     if db_user_by_email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
@@ -118,10 +130,11 @@ def login_for_access_token(
 def read_current_user(current_user: models.User = Depends(security.get_current_user)):
     return current_user
 
+
 @users_router.get("/me/albums", response_model=List[schemas.Album])
 def get_my_albums(
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
 ):
     """ Fetches all albums created by the currently authenticated user. """
     return crud.get_user_albums(db, user_id=current_user.id)
@@ -447,6 +460,7 @@ def unlike_media(media_id: int, db: Session = Depends(database_manager.get_db),
         raise HTTPException(status_code=404, detail="Media not liked")
     crud.delete_like(db, like=like_to_delete)
 
+
 # --- comments ---
 @comments_router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment_by_user(comment_id: int, db: Session = Depends(database_manager.get_db),
@@ -470,6 +484,7 @@ def search(q: str = "", db: Session = Depends(database_manager.get_db)):
         media_item.comment_count = crud.get_comment_count_for_media(db, media_id=media_item.id)
     return results
 
+
 @albums_router.post("", response_model=schemas.Album)
 def create_album(
         album: schemas.AlbumCreate,
@@ -490,9 +505,9 @@ def get_album(album_id: int, db: Session = Depends(database_manager.get_db)):
 # --- NEW: Endpoint to delete an album ---
 @albums_router.delete("/{album_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_album(
-    album_id: int,
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
+        album_id: int,
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
 ):
     """ Allows a user to delete their own album. """
     db_album = crud.get_album(db, album_id=album_id)
@@ -508,7 +523,8 @@ def delete_album(
 
 
 @albums_router.post("/{album_id}/media/{media_id}", response_model=schemas.Album)
-def add_media_to_album(album_id: int, media_id: int, db: Session = Depends(database_manager.get_db), current_user: models.User = Depends(security.get_current_user)):
+def add_media_to_album(album_id: int, media_id: int, db: Session = Depends(database_manager.get_db),
+                       current_user: models.User = Depends(security.get_current_user)):
     db_album = crud.get_album(db, album_id=album_id)
     if not db_album or db_album.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Album not found or not authorized")
@@ -517,8 +533,10 @@ def add_media_to_album(album_id: int, media_id: int, db: Session = Depends(datab
         raise HTTPException(status_code=404, detail="Media not found")
     return crud.add_media_to_album(db=db, media=db_media, album=db_album)
 
+
 @albums_router.delete("/{album_id}/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_media_from_album(album_id: int, media_id: int, db: Session = Depends(database_manager.get_db), current_user: models.User = Depends(security.get_current_user)):
+def remove_media_from_album(album_id: int, media_id: int, db: Session = Depends(database_manager.get_db),
+                            current_user: models.User = Depends(security.get_current_user)):
     db_album = crud.get_album(db, album_id=album_id)
     if not db_album or db_album.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Album not found or not authorized")
@@ -527,25 +545,27 @@ def remove_media_from_album(album_id: int, media_id: int, db: Session = Depends(
     crud.remove_media_from_album(db=db, media=db_media, album=db_album)
     return
 
+
 @notifications_router.get("", response_model=List[schemas.Notification])
 def get_notifications(
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
 ):
     return crud.get_notifications_for_user(db, user_id=current_user.id)
 
 
 @notifications_router.post("/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 def mark_notification_as_read(
-    notification_id: int,
-    db: Session = Depends(database_manager.get_db),
-    current_user: models.User = Depends(security.get_current_user)
+        notification_id: int,
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
 ):
     notification = crud.get_notification(db, notification_id=notification_id)
     if not notification or notification.recipient_id != current_user.id:
         raise HTTPException(status_code=404, detail="Notification not found")
     crud.mark_notification_as_read(db, notification=notification)
     return
+
 
 # --- REPORTS ENPOINTS ---
 @reports_router.post("", response_model=schemas.Report)
@@ -562,14 +582,15 @@ def submit_report(
         raise HTTPException(status_code=400, detail="Cannot report a media item and a comment simultaneously.")
     return crud.create_report(db=db, report=report, reporter_id=current_user.id)
 
+
 # --- ADMIN-ONLY ENDPOINTS ---
 @admin_router.get("/reports", response_model=schemas.PaginatedReports)
 def get_all_reports(
-    status: Optional[models.ReportStatus] = None,
-    skip: int = 0,
-    limit: int = 20,
-    db: Session = Depends(database_manager.get_db),
-    admin_user: models.User = Depends(security.get_current_admin_user)
+        status: Optional[models.ReportStatus] = None,
+        skip: int = 0,
+        limit: int = 20,
+        db: Session = Depends(database_manager.get_db),
+        admin_user: models.User = Depends(security.get_current_admin_user)
 ):
     result = crud.get_reports(db, status=status, skip=skip, limit=limit)
     return result
@@ -577,10 +598,10 @@ def get_all_reports(
 
 @admin_router.put("/reports/{report_id}", response_model=schemas.Report)
 def action_report(
-    report_id: int,
-    status_update: schemas.ReportStatusUpdate,
-    db: Session = Depends(database_manager.get_db),
-    admin_user: models.User = Depends(security.get_current_admin_user)
+        report_id: int,
+        status_update: schemas.ReportStatusUpdate,
+        db: Session = Depends(database_manager.get_db),
+        admin_user: models.User = Depends(security.get_current_admin_user)
 ):
     report = crud.get_report(db, report_id=report_id)
     if not report:
@@ -589,26 +610,29 @@ def action_report(
 
 
 @admin_router.post("/media/{media_id}/feature", response_model=schemas.Media)
-def toggle_feature_media(media_id: int, db: Session = Depends(database_manager.get_db), admin_user: models.User = Depends(security.get_current_admin_user)):
+def toggle_feature_media(media_id: int, db: Session = Depends(database_manager.get_db),
+                         admin_user: models.User = Depends(security.get_current_admin_user)):
     media = crud.get_media(db, media_id=media_id)
     if not media: raise HTTPException(status_code=404, detail="Media not found")
     return crud.toggle_media_featured_status(db, media=media)
 
+
 @admin_router.delete("/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_media_by_admin(
-    media_id: int,
-    db: Session = Depends(database_manager.get_db),
-    admin_user: models.User = Depends(security.get_current_admin_user)
+        media_id: int,
+        db: Session = Depends(database_manager.get_db),
+        admin_user: models.User = Depends(security.get_current_admin_user)
 ):
     media = crud.get_media(db, media_id=media_id)
     if not media: raise HTTPException(status_code=404, detail="Media not found")
     crud.delete_media(db, media=media)
 
+
 @admin_router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment_by_admin(
-    comment_id: int,
-    db: Session = Depends(database_manager.get_db),
-    admin_user: models.User = Depends(security.get_current_admin_user)
+        comment_id: int,
+        db: Session = Depends(database_manager.get_db),
+        admin_user: models.User = Depends(security.get_current_admin_user)
 ):
     comment = crud.get_comment(db, comment_id=comment_id)
     if not comment:
@@ -616,8 +640,9 @@ def delete_comment_by_admin(
     crud.delete_comment(db, comment=comment)
     return
 
+
 # --- Leaderboard Endpoints ---
-@leaderboard_router.get("/media", response_model=List[schemas.Media]) # RENAMED from /media
+@leaderboard_router.get("/media", response_model=List[schemas.Media])  # RENAMED from /media
 def get_leaderboard_media(limit: int = 10, db: Session = Depends(database_manager.get_db)):
     results = crud.get_top_liked_media(db=db, limit=limit)
     media_with_counts = []
@@ -626,6 +651,7 @@ def get_leaderboard_media(limit: int = 10, db: Session = Depends(database_manage
         media.comment_count = comment_count
         media_with_counts.append(media)
     return media_with_counts
+
 
 @leaderboard_router.get("/users", response_model=List[schemas.User])
 def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manager.get_db)):
@@ -637,6 +663,7 @@ def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manage
         user.following_count = crud.get_following_count_for_user(db, user_id=user.id)
         user_list.append(user)
     return user_list
+
 
 app.include_router(auth_router)
 app.include_router(users_router)
