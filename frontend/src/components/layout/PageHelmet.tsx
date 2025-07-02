@@ -1,5 +1,3 @@
-import { Helmet } from 'react-helmet-async';
-
 interface PageHelmetProps {
   title: string;
   description?: string;
@@ -13,9 +11,9 @@ export const PageHelmet = ({ title, description }: PageHelmetProps) => {
   const pageDescription = description || DEFAULT_DESCRIPTION;
 
   return (
-    <Helmet>
-      <title>{pageTitle}</title>
-      <meta name="description" content={pageDescription} />
-    </Helmet>
+      <>
+          <title>{pageTitle}</title>
+          <meta name="description" content={pageDescription}/>
+      </>
   );
 };

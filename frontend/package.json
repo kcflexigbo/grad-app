@@ -16,7 +16,6 @@
     "lucide-react": "^0.516.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-helmet-async": "^2.0.5",
     "react-hot-toast": "^2.5.2",
     "react-intersection-observer": "^9.16.0",
     "react-masonry-css": "^1.0.16",
