@@ -18,6 +18,7 @@ import { AddToAlbumModal } from '../components/AddToAlbumModal';
 import { ReportModal } from '../components/ReportModal';
 import type { Media as MediaType } from '../types/media';
 import type { Comment as CommentType } from '../types/comments';
+import {PageHelmet} from "../components/layout/PageHelmet.tsx";
 
 // Define the detailed media type returned by the API for this page
 interface MediaDetail extends MediaType {
@@ -146,10 +147,12 @@ export const MediaDetailPage = () => {
     const likeButtonClass = media.is_liked_by_current_user ? "text-red-500 fill-current" : "text-gray-600";
     const isOwner = currentUser?.id === media.owner.id;
     const canManageMedia = isOwner || !!currentUser?.is_admin;
-
+    const pageTitle = media.caption ? `"${media.caption.substring(0, 30)}"` : `${media.media_type === 'video' ? 'Video' : 'Photo'} by ${media.owner.username}`;
+    const pageDescription = `View media by ${media.owner.username}. ${media.like_count} likes, ${media.comment_count} comments.`;
 
     return (
         <>
+            <PageHelmet title={pageTitle} description={pageDescription} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
                 <div className="lg:col-span-2 bg-black rounded-lg flex items-center justify-center p-4">
                     {media.media_type === 'video' ? (

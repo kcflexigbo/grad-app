@@ -7,6 +7,7 @@ import { MediaGrid } from '../components/MediaGrid.tsx';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { useAuth } from '../hooks/useAuth';
 import type { Album as AlbumType } from '../types/album';
+import { PageHelmet } from "../components/layout/PageHelmet.tsx";
 
 const fetchAlbum = async (albumId: string): Promise<AlbumType> => {
     const { data } = await apiService.get(`/albums/${albumId}`);
@@ -80,42 +81,45 @@ export const AlbumDetailPage = () => {
     const isOwner = currentUser?.id === album.owner.id;
 
     return (
-        <div className="space-y-8">
-            <header className="border-b pb-6">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-4xl font-bold font-serif text-gray-800">{album.name}</h1>
-                        <p className="text-lg text-gray-600 mt-2">{album.description}</p>
-                        <div className="text-sm text-gray-500 mt-4">
-                            Created by <Link to={`/profile/${album.owner.username}`} className="font-semibold hover:underline">{album.owner.username}</Link>
+        <>
+            <PageHelmet title={album?.name ? album.name : "Album"}/>
+            <div className="space-y-8">
+                <header className="border-b pb-6">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-4xl font-bold font-serif text-gray-800">{album.name}</h1>
+                            <p className="text-lg text-gray-600 mt-2">{album.description}</p>
+                            <div className="text-sm text-gray-500 mt-4">
+                                Created by <Link to={`/profile/${album.owner.username}`} className="font-semibold hover:underline">{album.owner.username}</Link>
+                            </div>
                         </div>
+                        {/* --- NEW: Conditional Delete Button --- */}
+                        {isOwner && (
+                            <button
+                                onClick={handleDelete}
+                                disabled={deleteAlbumMutation.isPending}
+                                className="flex items-center gap-2 bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 disabled:bg-red-300"
+                            >
+                                <Trash2 size={18} />
+                                <span>Delete Album</span>
+                            </button>
+                        )}
                     </div>
-                    {/* --- NEW: Conditional Delete Button --- */}
-                    {isOwner && (
-                        <button
-                            onClick={handleDelete}
-                            disabled={deleteAlbumMutation.isPending}
-                            className="flex items-center gap-2 bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 disabled:bg-red-300"
-                        >
-                            <Trash2 size={18} />
-                            <span>Delete Album</span>
-                        </button>
-                    )}
-                </div>
-            </header>
+                </header>
 
-            <main>
-                {album.media.length > 0 ? (
-                    <MediaGrid mediaItems={album.media}
-                    onRemoveFromAlbum={isOwner ? handleRemoveFromAlbum : undefined}
-                    />
-                ) : (
-                    <div className="text-center text-gray-500 py-20 bg-gray-50 rounded-lg">
-                        <h3 className="text-2xl font-semibold">This album is empty.</h3>
-                        <p className="mt-2">The owner can add photos to this album.</p>
-                    </div>
-                )}
-            </main>
-        </div>
+                <main>
+                    {album.media.length > 0 ? (
+                        <MediaGrid mediaItems={album.media}
+                        onRemoveFromAlbum={isOwner ? handleRemoveFromAlbum : undefined}
+                        />
+                    ) : (
+                        <div className="text-center text-gray-500 py-20 bg-gray-50 rounded-lg">
+                            <h3 className="text-2xl font-semibold">This album is empty.</h3>
+                            <p className="mt-2">The owner can add photos to this album.</p>
+                        </div>
+                    )}
+                </main>
+            </div>
+        </>
     );
 };

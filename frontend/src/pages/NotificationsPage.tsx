@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiService from '../api/apiService';
-import type { Notification } from '../types/notification'; // You need to create this type
+import type { Notification } from '../types/notification';
 import { Heart, MessageCircle, UserPlus, Download, CheckCircle } from 'lucide-react';
+import {PageHelmet} from "../components/layout/PageHelmet.tsx";
 
 const fetchNotifications = async (): Promise<Notification[]> => {
     const { data } = await apiService.get('/notifications');
@@ -58,43 +59,48 @@ export const NotificationsPage = () => {
         },
     });
 
-    if (isLoading) return <div>Loading notifications...</div>;
+    if (isLoading) return (
+            <div>Loading notifications...</div>
+    );
 
     return (
-         <div className="max-w-4xl mx-auto space-y-8">
-            <header>
-                <h1 className="text-4xl font-bold font-serif text-gray-800">Notifications</h1>
-            </header>
+        <>
+            <PageHelmet title={"Notifications"} description={"View your notifications and manage your account."} />
+             <div className="max-w-4xl mx-auto space-y-8">
+                <header>
+                    <h1 className="text-4xl font-bold font-serif text-gray-800">Notifications</h1>
+                </header>
 
-            <div className="space-y-3">
-                {notifications && notifications.length > 0 ? notifications.map(notification => {
-                    const { icon, text, link, actor } = getNotificationDetails(notification);
-                    const isReadClass = notification.is_read ? 'opacity-60' : 'bg-blue-50';
+                <div className="space-y-3">
+                    {notifications && notifications.length > 0 ? notifications.map(notification => {
+                        const { icon, text, link, actor } = getNotificationDetails(notification);
+                        const isReadClass = notification.is_read ? 'opacity-60' : 'bg-blue-50';
 
-                    return (
-                        <div key={notification.id} className={`flex items-center gap-4 p-4 border rounded-lg transition-all ${isReadClass}`}>
-                            <div className="flex-shrink-0">{icon}</div>
-                            <div className="flex-grow">
-                                <Link to={link}>
-                                    <p>{actor} {text}</p>
-                                    <p className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString()}</p>
-                                </Link>
+                        return (
+                            <div key={notification.id} className={`flex items-center gap-4 p-4 border rounded-lg transition-all ${isReadClass}`}>
+                                <div className="flex-shrink-0">{icon}</div>
+                                <div className="flex-grow">
+                                    <Link to={link}>
+                                        <p>{actor} {text}</p>
+                                        <p className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString()}</p>
+                                    </Link>
+                                </div>
+                                {!notification.is_read && (
+                                    <button
+                                        onClick={() => markAsReadMutation.mutate(notification.id)}
+                                        className="p-2 rounded-full hover:bg-green-100"
+                                        title="Mark as read"
+                                    >
+                                        <CheckCircle className="text-gray-400 hover:text-green-600" size={20} />
+                                    </button>
+                                )}
                             </div>
-                            {!notification.is_read && (
-                                <button
-                                    onClick={() => markAsReadMutation.mutate(notification.id)}
-                                    className="p-2 rounded-full hover:bg-green-100"
-                                    title="Mark as read"
-                                >
-                                    <CheckCircle className="text-gray-400 hover:text-green-600" size={20} />
-                                </button>
-                            )}
-                        </div>
-                    );
-                }) : (
-                    <p className="text-center text-gray-500 py-10">You have no new notifications.</p>
-                )}
+                        );
+                    }) : (
+                        <p className="text-center text-gray-500 py-10">You have no new notifications.</p>
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     );
 };

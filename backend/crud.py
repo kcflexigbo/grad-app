@@ -1,11 +1,11 @@
 from typing import List, Dict, Any, Optional
 
-from sqlalchemy.orm import Session, contains_eager
+from sqlalchemy.orm import Session, contains_eager, selectinload
 from sqlalchemy import func, or_
 import schemas, security, models
 
 
-# --- User CRUD Functions (Largely Unchanged) ---
+# --- User CRUD Functions ---
 
 def get_user(db: Session, user_id: int):
     """Retrieves a single user by their ID."""
@@ -18,8 +18,16 @@ def get_user_by_email(db: Session, email: str):
 
 
 def get_user_by_username(db: Session, username: str):
-    """Retrieves a single user by their username."""
-    return db.query(models.User).filter(models.User.username == username).first()
+    """Retrieves a single user by their username, preloading related data."""
+    return (
+        db.query(models.User)
+        .options(
+            selectinload(models.User.media).options(selectinload(models.Media.tags)),
+            selectinload(models.User.albums)
+        )
+        .filter(models.User.username == username)
+        .first()
+    )
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):

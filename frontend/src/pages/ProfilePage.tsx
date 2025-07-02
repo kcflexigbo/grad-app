@@ -13,6 +13,7 @@ import { FollowButton } from '../components/FollowButton';
 import { useAuth } from '../hooks/useAuth';
 import { ProfilePictureModal } from '../components/ProfilePictureModal';
 import { CreateAlbumModal } from "../components/CreateAlbumModal.tsx";
+import {PageHelmet} from "../components/layout/PageHelmet.tsx";
 
 interface AlbumSummary {
     id: number;
@@ -119,6 +120,10 @@ export const ProfilePage = () => {
 
     return (
         <>
+            <PageHelmet
+                title={`${profile.username}'s Profile`}
+                description={profile.bio || `View the profile, photos, and albums of ${profile.username}.`}
+            />
             <div className="space-y-12">
                 <header className="flex flex-col md:flex-row items-center gap-8">
                      <button onClick={() => setIsPfpModalOpen(true)} className="flex-shrink-0">

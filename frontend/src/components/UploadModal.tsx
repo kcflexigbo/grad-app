@@ -176,9 +176,20 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
 
                 <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center space-x-4">
                     {error && <p className="text-sm text-red-600 mr-auto">{error}</p>}
-                    <button onClick={handleClose} className="...">Cancel</button>
-                    <button type="submit" onClick={handleSubmit} disabled={isUploading || isProcessing || files.length === 0} className="...">
-                        {isUploading && <Loader2 className="animate-spin mr-2" />}
+                    <button
+                        type="button" // Important for forms with multiple buttons
+                        onClick={handleClose}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        onClick={handleSubmit}
+                        disabled={isUploading || isProcessing || files.length === 0}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                    >
+                        {isUploading && <Loader2 size={18} className="animate-spin" />}
                         {isUploading ? 'Uploading...' : `Upload ${files.length} Item(s)`}
                     </button>
                 </div>

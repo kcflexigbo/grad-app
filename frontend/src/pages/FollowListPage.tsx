@@ -25,13 +25,19 @@ export const FollowListPage = () => {
     const { data: users, isLoading, isError } = useQuery({
         queryKey: ['followList', username, mode],
         queryFn: () => fetchFollowData(username!, mode!),
-        enabled: !!username && username !== 'string' && !!mode,
+        enabled: !!username && !!mode,
     });
 
     const pageTitle = mode === 'followers' ? 'Followers' : 'Following';
 
-    if (!username || username === 'string') {
-        return <div>Loading user information...</div>;
+    if (!username || !mode) {
+        return (
+            <div className="text-center py-20">
+                <h1 className="text-2xl font-bold">Invalid Page</h1>
+                <p className="text-gray-600 mt-2">Could not determine the user or list to display.</p>
+                <Link to="/" className="mt-6 inline-block bg-brand-accent text-white font-bold py-2 px-6 rounded-md">Go Home</Link>
+            </div>
+        );
     }
 
     return (
