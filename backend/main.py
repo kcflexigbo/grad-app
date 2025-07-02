@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import timedelta
+from pathlib import Path
 from typing import Dict, List, Optional
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, File, UploadFile, Form, Request, BackgroundTasks
 from fastapi import WebSocket, WebSocketDisconnect
@@ -66,54 +67,59 @@ async def healthz() -> Dict[str, str]:
     return {"status": "OK"}
 
 
-def process_video_in_background(temp_path: str, media_id: int):
+def process_video_in_background(temp_path_str: str, media_id: int):
     """
     This function runs in the background. It creates its own DB session.
+    It now uses pathlib for robust path handling.
     """
-    # Create a new, independent database session for this task
     db = SessionLocal()
 
-    compressed_path = None  # Define here to be accessible in finally block
-    try:
-        file_extension = os.path.splitext(temp_path)[1]
-        compressed_path = temp_path.replace(file_extension, f'_compressed{file_extension}')
+    # Convert string paths to Path objects
+    temp_path = Path(temp_path_str)
+    compressed_path = None
 
-        # The FFmpeg command to compress the video
+    try:
+        # Create the compressed path using pathlib's .with_suffix() method
+        compressed_path = temp_path.with_name(f"{temp_path.stem}_compressed{temp_path.suffix}")
+
+        # The FFmpeg command. All paths are now correctly formatted for the OS.
         command = [
-            'ffmpeg', '-i', temp_path,
+            'ffmpeg', '-i', str(temp_path),  # Convert Path back to string for the command
             '-vcodec', 'libx264', '-crf', '28',
             '-preset', 'veryfast', '-c:a', 'copy',
-            compressed_path
+            str(compressed_path)  # Convert Path back to string
         ]
 
-        # Run the command. check=True will raise an exception if ffmpeg fails.
         subprocess.run(command, check=True, capture_output=True, text=True)
 
-        # Upload the *compressed* file to OSS using our new function
-        oss_object_name = f"media/{uuid.uuid4()}{file_extension}"
+        # Upload the compressed file to OSS
+        oss_object_name = f"media/{uuid.uuid4()}{temp_path.suffix}"
         compressed_url = oss_manager.upload_local_file_to_oss(
-            local_file_path=compressed_path,
+            local_file_path=str(compressed_path),
             object_name=oss_object_name,
-            content_type='video/mp4'  # Or infer from filename if needed
+            content_type='video/mp4'
         )
 
-        # Update the database record with the final URL
+        # Update the database
         db_media = crud.get_media(db, media_id)
         if db_media:
             db_media.media_url = compressed_url
             db.commit()
 
+    except subprocess.CalledProcessError as e:
+        # This gives you more detail if ffmpeg itself fails
+        print(f"FFmpeg failed for media_id {media_id}:")
+        print(f"Stderr: {e.stderr}")
+        print(f"Stdout: {e.stdout}")
     except Exception as e:
         print(f"Failed to process video for media_id {media_id}: {e}")
-        # Optional: You could update the DB record to show a 'processing_failed' status
 
     finally:
         # Clean up the temporary local files
-        if os.path.exists(temp_path):
+        if temp_path.exists():
             os.remove(temp_path)
-        if compressed_path and os.path.exists(compressed_path):
+        if compressed_path and compressed_path.exists():
             os.remove(compressed_path)
-        # Close the database session
         db.close()
 
 @app.websocket("/ws/notifications")
@@ -380,33 +386,32 @@ def upload_media(
     tag_models = crud.get_or_create_tags(db, tags=tag_names)
 
     for file in files:
-        db_media = None  # Initialize db_media
+        db_media = None
 
-        # --- LOGIC FOR VIDEO ---
         if file.content_type and file.content_type.startswith("video/"):
-            temp_dir = "/tmp/video_uploads"
-            os.makedirs(temp_dir, exist_ok=True)
 
-            # Use original filename extension
-            file_extension = os.path.splitext(file.filename)[1]
+            import tempfile
+            temp_dir = Path(tempfile.gettempdir()) / "video_uploads"
+
+            temp_dir.mkdir(parents=True, exist_ok=True)
+
+            file_extension = Path(file.filename).suffix
             temp_filename = f"{uuid.uuid4()}{file_extension}"
-            temp_path = os.path.join(temp_dir, temp_filename)
+            temp_path = temp_dir / temp_filename  # Use the / operator for joining paths with pathlib
 
             with open(temp_path, "wb") as buffer:
                 buffer.write(file.file.read())
 
-            # Create a placeholder entry in the database IMMEDIATELY
             db_media = crud.create_media(
                 db=db, owner_id=current_user.id,
-                media_url="processing",  # Placeholder URL
+                media_url="processing",
                 caption=caption, media_type=models.MediaType.video
             )
             created_media_list.append(db_media)
 
-            # Add the compression job to run in the background.
-            # Notice we are no longer passing the 'db' object.
+            # Pass the path as a string to the background task
             background_tasks.add_task(
-                process_video_in_background, temp_path, db_media.id
+                process_video_in_background, str(temp_path), db_media.id
             )
 
         # --- LOGIC FOR IMAGES (Unchanged) ---

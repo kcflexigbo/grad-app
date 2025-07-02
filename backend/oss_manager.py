@@ -53,8 +53,6 @@ def upload_file_to_oss(file: UploadFile, object_name: str) -> str:
         print(f"Error uploading to OSS: {e}")
         raise e
 
-    # Construct the public URL
-    # Format: https://<BucketName>.<Endpoint>/<ObjectName>
     public_url = f"https://{OSS_BUCKET_NAME}.{OSS_ENDPOINT}/{object_name}"
     return public_url
 
