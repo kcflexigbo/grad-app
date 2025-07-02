@@ -375,13 +375,22 @@ def get_media_by_id(media_id: int, db: Session = Depends(database_manager.get_db
 
 
 @media_router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_media_by_user(media_id: int, db: Session = Depends(database_manager.get_db),
-                         current_user: models.User = Depends(security.get_current_user)):
+def delete_media_by_user(
+        media_id: int,
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
+):
     media = crud.get_media(db, media_id=media_id)
-    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
     if media.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to delete this media")
+
+    oss_manager.delete_file_from_oss(media.media_url)
+
     crud.delete_media(db, media=media)
+    return
 
 
 @media_router.put("/{media_id}", response_model=schemas.Media)
@@ -624,8 +633,13 @@ def delete_media_by_admin(
         admin_user: models.User = Depends(security.get_current_admin_user)
 ):
     media = crud.get_media(db, media_id=media_id)
-    if not media: raise HTTPException(status_code=404, detail="Media not found")
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    oss_manager.delete_file_from_oss(media.media_url)
+
     crud.delete_media(db, media=media)
+    return
 
 
 @admin_router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
