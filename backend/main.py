@@ -2,7 +2,7 @@ import os
 import uuid
 from datetime import timedelta
 from typing import Dict, List, Optional
-from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, File, UploadFile, Form, Request
+from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, File, UploadFile, Form, Request, BackgroundTasks
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+import subprocess
+from database_manager import SessionLocal, get_db
 
-import crud, models, schemas, security, database_manager, oss_manager
+import crud, models, schemas, security, oss_manager, database_manager
 from connection_manager import manager
 
 limiter = Limiter(key_func=get_remote_address)
@@ -63,6 +65,56 @@ def read_root():
 async def healthz() -> Dict[str, str]:
     return {"status": "OK"}
 
+
+def process_video_in_background(temp_path: str, media_id: int):
+    """
+    This function runs in the background. It creates its own DB session.
+    """
+    # Create a new, independent database session for this task
+    db = SessionLocal()
+
+    compressed_path = None  # Define here to be accessible in finally block
+    try:
+        file_extension = os.path.splitext(temp_path)[1]
+        compressed_path = temp_path.replace(file_extension, f'_compressed{file_extension}')
+
+        # The FFmpeg command to compress the video
+        command = [
+            'ffmpeg', '-i', temp_path,
+            '-vcodec', 'libx264', '-crf', '28',
+            '-preset', 'veryfast', '-c:a', 'copy',
+            compressed_path
+        ]
+
+        # Run the command. check=True will raise an exception if ffmpeg fails.
+        subprocess.run(command, check=True, capture_output=True, text=True)
+
+        # Upload the *compressed* file to OSS using our new function
+        oss_object_name = f"media/{uuid.uuid4()}{file_extension}"
+        compressed_url = oss_manager.upload_local_file_to_oss(
+            local_file_path=compressed_path,
+            object_name=oss_object_name,
+            content_type='video/mp4'  # Or infer from filename if needed
+        )
+
+        # Update the database record with the final URL
+        db_media = crud.get_media(db, media_id)
+        if db_media:
+            db_media.media_url = compressed_url
+            db.commit()
+
+    except Exception as e:
+        print(f"Failed to process video for media_id {media_id}: {e}")
+        # Optional: You could update the DB record to show a 'processing_failed' status
+
+    finally:
+        # Clean up the temporary local files
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        if compressed_path and os.path.exists(compressed_path):
+            os.remove(compressed_path)
+        # Close the database session
+        db.close()
 
 @app.websocket("/ws/notifications")
 async def websocket_notifications_endpoint(websocket: WebSocket, token: str,
@@ -316,44 +368,64 @@ def get_all_media(sort_by: str = "newest", skip: int = 0, limit: int = 20,
 
 @media_router.post("", response_model=List[schemas.Media])
 def upload_media(
+        background_tasks: BackgroundTasks,
         files: List[UploadFile] = File(...),
         caption: str = Form(""),
         tags: str = Form(""),
-        db: Session = Depends(database_manager.get_db),
+        db: Session = Depends(get_db),  # We still need the DB session for the initial creation
         current_user: models.User = Depends(security.get_current_user)
 ):
     created_media_list = []
-    tag_models = []
-    if tags:
-        tag_names = [tag.strip() for tag in tags.split(',')]
-        tag_models = crud.get_or_create_tags(db, tags=tag_names)
+    tag_names = [tag.strip() for tag in tags.split(',') if tag.strip()]
+    tag_models = crud.get_or_create_tags(db, tags=tag_names)
 
     for file in files:
-        content_type = file.content_type
-        if content_type.startswith("image/"):
-            media_type = models.MediaType.image
-        elif content_type.startswith("video/"):
-            media_type = models.MediaType.video
-        else:
-            continue
+        db_media = None  # Initialize db_media
 
-        file_extension = os.path.splitext(file.filename)[1]
-        unique_filename = f"media/{uuid.uuid4()}{file_extension}"
+        # --- LOGIC FOR VIDEO ---
+        if file.content_type and file.content_type.startswith("video/"):
+            temp_dir = "/tmp/video_uploads"
+            os.makedirs(temp_dir, exist_ok=True)
 
-        try:
+            # Use original filename extension
+            file_extension = os.path.splitext(file.filename)[1]
+            temp_filename = f"{uuid.uuid4()}{file_extension}"
+            temp_path = os.path.join(temp_dir, temp_filename)
+
+            with open(temp_path, "wb") as buffer:
+                buffer.write(file.file.read())
+
+            # Create a placeholder entry in the database IMMEDIATELY
+            db_media = crud.create_media(
+                db=db, owner_id=current_user.id,
+                media_url="processing",  # Placeholder URL
+                caption=caption, media_type=models.MediaType.video
+            )
+            created_media_list.append(db_media)
+
+            # Add the compression job to run in the background.
+            # Notice we are no longer passing the 'db' object.
+            background_tasks.add_task(
+                process_video_in_background, temp_path, db_media.id
+            )
+
+        # --- LOGIC FOR IMAGES (Unchanged) ---
+        elif file.content_type and file.content_type.startswith("image/"):
+            file_extension = os.path.splitext(file.filename)[1]
+            unique_filename = f"media/{uuid.uuid4()}{file_extension}"
             media_url = oss_manager.upload_file_to_oss(file=file, object_name=unique_filename)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to upload {file.filename}: {e}")
+            db_media = crud.create_media(db=db, owner_id=current_user.id, media_url=media_url, caption=caption,
+                                         media_type=models.MediaType.image)
+            created_media_list.append(db_media)
 
-        db_media = crud.create_media(db=db, owner_id=current_user.id, media_url=media_url, caption=caption,
-                                     media_type=media_type)
-        if tag_models:
+        # Associate tags if a media item was created
+        if db_media and tag_models:
             crud.associate_tags_with_media(db, media=db_media, tags=tag_models)
             db.refresh(db_media)
-        created_media_list.append(db_media)
 
     if not created_media_list:
         raise HTTPException(status_code=400, detail="No valid files were uploaded.")
+
     return created_media_list
 
 
