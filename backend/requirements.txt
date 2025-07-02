@@ -13,3 +13,4 @@ python-jose[cryptography]
 python-multipart
 boto3
 slowapi
+subprocess

@@ -54,8 +54,27 @@ def upload_file_to_oss(file: UploadFile, object_name: str) -> str:
         print(f"Error uploading to OSS: {e}")
         raise e
 
-    # Construct the public URL
-    # Format: https://<BucketName>.<Endpoint>/<ObjectName>
+    public_url = f"https://{OSS_BUCKET_NAME}.{OSS_ENDPOINT}/{object_name}"
+    return public_url
+
+def upload_local_file_to_oss(local_file_path: str, object_name: str, content_type: str) -> str:
+    """
+    Uploads a file from a local path on the server to OSS.
+    """
+    try:
+        s3_client.upload_file(
+            local_file_path,
+            OSS_BUCKET_NAME,
+            object_name,
+            ExtraArgs={
+                'ACL': 'public-read',
+                'ContentType': content_type
+            }
+        )
+    except Exception as e:
+        print(f"Error uploading local file to OSS: {e}")
+        raise e
+
     public_url = f"https://{OSS_BUCKET_NAME}.{OSS_ENDPOINT}/{object_name}"
     return public_url
 
