@@ -111,3 +111,33 @@ def delete_file_from_oss(file_url: str) -> bool:
     except Exception as e:
         print(f"Error deleting file {file_url} from OSS: {e}")
         return False
+
+
+def list_files_in_directory(directory_prefix: str) -> list[str]:
+    """
+    Lists all file keys (object names) within a specific 'directory' (prefix)
+    in the OSS bucket. This is a recursive listing.
+
+    Note: In OSS/S3, directories are just prefixes. To list files in 'images/cats/',
+    provide 'images/cats/' as the directory_prefix.
+
+    :param directory_prefix: The prefix to search for. Should end with a '/'.
+    :return: A list of full object keys for files found under that prefix.
+    """
+    all_file_keys = []
+    try:
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=OSS_BUCKET_NAME, Prefix=directory_prefix)
+
+        for page in pages:
+            if "Contents" in page:
+                for obj in page['Contents']:
+                    all_file_keys.append(f"https://{OSS_BUCKET_NAME}.{OSS_ENDPOINT}/{obj['Key']}")
+
+    except Exception as e:
+        print(f"Error listing files in '{directory_prefix}': {e}")
+        raise e
+
+    return all_file_keys
+
+# if __name__ ==
