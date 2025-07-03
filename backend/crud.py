@@ -3,7 +3,8 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session, contains_eager, selectinload
 from sqlalchemy import func, or_
 import schemas, security, models
-
+from datetime import datetime, timedelta, timezone
+import hashlib
 
 # --- User CRUD Functions ---
 
@@ -515,3 +516,33 @@ def delete_comment(db: Session, comment: models.Comment):
     db.delete(comment)
     db.commit()
     return True
+
+
+# --- NEW: Password Reset Token CRUD ---
+
+def create_password_reset_token(db: Session, user_id: int, token: str) -> models.PasswordResetToken:
+    """Creates and stores a password reset token."""
+    # Hash the token before storing for security
+    hashed_token = hashlib.sha256(token.encode()).hexdigest()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30) # Token valid for 30 mins
+    db_token = models.PasswordResetToken(
+        user_id=user_id,
+        token=hashed_token,
+        expires_at=expires_at
+    )
+    db.add(db_token)
+    db.commit()
+    db.refresh(db_token)
+    return db_token
+
+def get_password_reset_token(db: Session, token: str) -> Optional[models.PasswordResetToken]:
+    """Retrieves a token record by the plain token."""
+    hashed_token = hashlib.sha256(token.encode()).hexdigest()
+    return db.query(models.PasswordResetToken).filter(models.PasswordResetToken.token == hashed_token).first()
+
+def use_password_reset_token(db: Session, db_token: models.PasswordResetToken) -> models.PasswordResetToken:
+    """Marks a token as used."""
+    db_token.used_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(db_token)
+    return db_token

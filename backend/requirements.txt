@@ -14,3 +14,4 @@ python-multipart
 boto3
 slowapi
 subprocess
+fastapi-mail

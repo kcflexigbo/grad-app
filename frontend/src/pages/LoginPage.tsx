@@ -75,8 +75,14 @@ export const LoginPage = () => {
                                         className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-brand-accent"
                                     />
                                 </div>
+
                                 <div>
-                                    <label htmlFor="password" className="text-sm font-semibold text-brand-text block mb-1">Password</label>
+                                    <div className="flex items-center justify-between">
+                                        <label htmlFor="password" className="text-sm font-semibold text-brand-text block mb-1">Password</label>
+                                        <Link to="/forgot-password" className="text-sm font-semibold text-brand-accent hover:underline">
+                                            Forgot password?
+                                        </Link>
+                                    </div>
                                     <input
                                         id="password"
                                         type="password"

@@ -218,6 +218,12 @@ class SearchResults(BaseModel):
 class UserWithFollowStatus(UserSimple):
     is_followed_by_current_user: bool = False
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 # --- Rebuild Models with Forward References ---
 Album.model_rebuild()

@@ -31,6 +31,8 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { LeaderboardPage } from "./pages/LeaderboardPage.tsx";
 import { FollowListPage } from './pages/FollowListPage.tsx';
 import { AdminReportsHistoryPage } from './pages/AdminReportsHistoryPage.tsx';
+import {ForgotPasswordPage} from "./pages/ForgotPasswordPage.tsx";
+import {ResetPasswordPage} from "./pages/ResetPasswordPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -140,6 +142,8 @@ function App() {
 
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>

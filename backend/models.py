@@ -192,3 +192,14 @@ class Report(Base):
     # --- RENAMED and relationship back_populates updated ---
     reported_media = relationship("Media", back_populates="reports")
     reported_comment = relationship("Comment", back_populates="reports")
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String, unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True) # To mark as used
+
+    user = relationship("User")

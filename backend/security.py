@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -115,3 +116,10 @@ def get_current_admin_user(current_user: models.User = Depends(get_current_user)
             detail="The user doesn't have enough privileges"
         )
     return current_user
+
+def create_password_reset_token(email: str) -> str:
+    """
+    Generates a secure, random token for password reset.
+    This is NOT a JWT, but a simple secure token.
+    """
+    return secrets.token_urlsafe(32)

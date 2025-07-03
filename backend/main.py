@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, File, UploadFile, Form, Request, BackgroundTasks
@@ -15,7 +15,7 @@ from slowapi.errors import RateLimitExceeded
 import subprocess
 from database_manager import SessionLocal, get_db
 
-import crud, models, schemas, security, oss_manager, database_manager
+import crud, models, schemas, security, oss_manager, database_manager, email_manager
 from connection_manager import manager
 
 limiter = Limiter(key_func=get_remote_address)
@@ -38,6 +38,7 @@ notifications_router = APIRouter(prefix="/notifications", tags=["Notifications"]
 reports_router = APIRouter(prefix="/reports", tags=["Reports"])
 admin_router = APIRouter(prefix="/admin", tags=["Administration"])
 leaderboard_router = APIRouter(prefix="/leaderboard", tags=["Leaderboard"])
+
 
 origins = [
     "http://localhost:5173",
@@ -181,6 +182,63 @@ def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@auth_router.post("/forgot-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/hour")
+async def forgot_password(
+        request: Request,
+        background_tasks: BackgroundTasks,
+        payload: schemas.ForgotPasswordRequest,
+        db: Session = Depends(database_manager.get_db)
+):
+    user = crud.get_user_by_email(db, email=str(payload.email))
+    # Always return a success-like message to prevent email enumeration
+    if user:
+        # 1. Generate a simple, secure token
+        reset_token = security.create_password_reset_token(email=str(payload.email))
+
+        # 2. Store the HASHED token in the database
+        crud.create_password_reset_token(db, user_id=user.id, token=reset_token)
+
+        # 3. Send the email in the background
+        background_tasks.add_task(
+            email_manager.send_password_reset_email, str(user.email), reset_token
+        )
+
+    return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+
+# --- NEW: Reset Password Endpoint ---
+@auth_router.post("/reset-password", status_code=status.HTTP_200_OK)
+@limiter.limit("10/hour")
+def reset_password(
+        request: Request,
+        payload: schemas.ResetPasswordRequest,
+        db: Session = Depends(database_manager.get_db)
+):
+    db_token = crud.get_password_reset_token(db, token=payload.token)
+
+    # 1. Validate token
+    if not db_token:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    if db_token.used_at:
+        raise HTTPException(status_code=400, detail="Token has already been used")
+    if db_token.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Token has expired")
+
+    # 2. Get user and update password
+    user = crud.get_user(db, user_id=db_token.user_id)
+    if not user:
+        # This case should be rare but is a good safeguard
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+    crud.update_user_password(db, user=user, new_password=payload.new_password)
+
+    # 3. Mark token as used
+    crud.use_password_reset_token(db, db_token=db_token)
+
+    return {"message": "Password has been reset successfully."}
 
 
 # --- User Endpoints ---
