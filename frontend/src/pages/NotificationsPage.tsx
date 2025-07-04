@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiService from '../api/apiService';
 import type { Notification } from '../types/notification';
-import { Heart, MessageCircle, UserPlus, Download, CheckCircle } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Download, CheckCircle, MessageSquareText } from 'lucide-react';
 import {PageHelmet} from "../components/layout/PageHelmet.tsx";
 
 const fetchNotifications = async (): Promise<Notification[]> => {
@@ -40,6 +40,11 @@ const getNotificationDetails = (notification: Notification) => {
              details.text = 'downloaded your media.';
              details.link = `/media/${notification.related_entity_id}`;
              break;
+        case 'chat_message':
+            details.icon = <MessageSquareText className="text-cyan-500" size={20} />;
+            details.text = 'sent you a message.';
+            details.link = `/chat?id=${notification.related_entity_id}`;
+            break;
     }
 
     return { ...details, actor: actorLink };

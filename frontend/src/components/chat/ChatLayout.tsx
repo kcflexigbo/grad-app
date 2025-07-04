@@ -29,7 +29,7 @@ export const ChatLayout = ({
 }: ChatLayoutProps) => {
 
     return (
-        <div className="h-[calc(100vh-200px)] flex border rounded-lg overflow-hidden shadow-md">
+        <div className="flex border rounded-lg overflow-hidden shadow-md" style={{ height: '75vh' }}>
             {/* Sidebar with Conversation List */}
             <aside className="w-1/3 min-w-[280px] max-w-[360px] bg-gray-50 border-r overflow-y-auto">
                 <div className="p-4 border-b">

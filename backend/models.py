@@ -19,6 +19,7 @@ class NotificationType(enum.Enum):
     comment = 'comment'
     follow = 'follow'
     download = 'download'
+    chat_message = 'chat_message'
 
 
 class ReportStatus(enum.Enum):

@@ -24,6 +24,14 @@ export const ConversationListItem = ({ conversation, isSelected, onClick }: Conv
         ${isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'}
     `;
 
+    const getFormattedTime = (dateString: string) => {
+        const date = new Date(dateString);
+        // Get hours and minutes in the user's local timezone
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
     return (
         <li key={conversation.id}>
             <button onClick={onClick} className={itemClasses}>
@@ -43,7 +51,7 @@ export const ConversationListItem = ({ conversation, isSelected, onClick }: Conv
                 </div>
                 {lastMessage && (
                      <div className="text-xs text-gray-400 self-start flex-shrink-0">
-                        {new Date(lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {getFormattedTime(lastMessage.created_at)}
                     </div>
                 )}
             </button>

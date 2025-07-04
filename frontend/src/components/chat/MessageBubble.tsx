@@ -14,6 +14,14 @@ export const MessageBubble = ({ message, isOwnMessage, sender }: MessageBubblePr
         : 'bg-gray-200 text-gray-800';
     const timeAlignment = isOwnMessage ? 'text-right' : 'text-left';
 
+    const getFormattedTime = (dateString: string) => {
+        const date = new Date(dateString);
+        // Get hours and minutes in the user's local timezone
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
     return (
         <div className={`flex flex-col ${bubbleAlignment} gap-1`}>
             <div className="flex items-end gap-2 max-w-sm">
@@ -29,7 +37,7 @@ export const MessageBubble = ({ message, isOwnMessage, sender }: MessageBubblePr
                 </div>
             </div>
             <p className={`text-xs text-gray-400 px-2 ${timeAlignment}`}>
-                {new Date(message.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                {getFormattedTime(message.created_at)}
             </p>
         </div>
     );

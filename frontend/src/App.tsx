@@ -34,6 +34,7 @@ import { AdminReportsHistoryPage } from './pages/AdminReportsHistoryPage.tsx';
 import {ForgotPasswordPage} from "./pages/ForgotPasswordPage.tsx";
 import {ResetPasswordPage} from "./pages/ResetPasswordPage.tsx";
 import {ChatPage} from "./pages/ChatPage.tsx";
+import toast, {Toaster} from "react-hot-toast";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,22 @@ const AppLayout = () => {
     useEffect(() => {
         if (lastMessage) {
             setUnreadCount(prev => prev + 1);
+
+            if (lastMessage.type === 'chat_message') {
+                toast(
+                    (t) => (
+                        <span onClick={() => toast.dismiss(t.id)}>
+                            New message from <b>{lastMessage.actor.username}</b>
+                            <Link to={`/chat?id=${lastMessage.related_entity_id}`} className="font-bold text-blue-400 ml-2">
+                               View
+                            </Link>
+                        </span>
+                    ),
+                    { icon: '💬' }
+                );
+                queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            }
+
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
         }
     }, [lastMessage, queryClient]);
@@ -80,12 +97,10 @@ const AppLayout = () => {
     };
 
     return (
-        // --- MODIFICATION: Removed bg-gray-50 to allow body background to show ---
         <div className="flex flex-col min-h-screen font-sans">
             <Navbar onUploadClick={() => setIsUploadModalOpen(true)} notificationCount={unreadCount} />
 
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* --- NEW: Content Card Wrapper for Glassmorphism Effect --- */}
                 <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 sm:p-10">
                     <Outlet />
                 </div>
@@ -126,6 +141,17 @@ function App() {
         <QueryClientProvider client={queryClient}>
             <Router>
                 <AuthProvider>
+                    <Toaster
+                      position="top-right"
+                      reverseOrder={false}
+                      toastOptions={{
+                        duration: 8000,
+                        style: {
+                          background: '#333',
+                          color: '#fff',
+                        },
+                      }}
+                    />
                     <Routes>
                         <Route path="/" element={<AppLayout />}>
                             <Route index element={<HomePage />} />

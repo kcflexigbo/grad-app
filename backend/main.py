@@ -209,6 +209,34 @@ async def websocket_chat_endpoint(
                 schemas.Message.model_validate(db_message).model_dump_json()
             )
 
+            notification_content = {
+                "id": 0,  # Placeholder, the actual notification will have its own ID
+                "type": "chat_message",  # A new notification type
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "actor": schemas.UserSimple.model_validate(current_user),
+                "related_entity_id": conversation_id
+            }
+
+            for participant in conversation.participants:
+                # We only want to notify OTHER people in the chat, not the person who sent the message.
+                if participant.id != current_user.id:
+
+                    # Create the notification in the database
+                    db_notification = crud.create_notification(
+                        db,
+                        recipient_id=participant.id,
+                        actor_id=current_user.id,
+                        type=models.NotificationType.chat_message,
+                        related_entity_id=conversation.id  # The related entity is the conversation itself
+                    )
+
+                    if db_notification:
+                        await manager.send_personal_message(
+                            schemas.Notification.model_validate(db_notification).model_dump_json(),
+                            db_notification.recipient_id
+                        )
+
     except WebSocketDisconnect:
         manager.disconnect_from_room(room_name, websocket)
 
