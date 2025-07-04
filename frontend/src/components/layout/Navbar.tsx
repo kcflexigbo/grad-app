@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Bell, Upload, Search, Settings, User as UserIcon, LogOut, Crown } from 'lucide-react';
+import { Bell, Upload, Search, Settings, User as UserIcon, LogOut, Crown, MessageSquare } from 'lucide-react';
 import { useState, type FormEvent, useEffect, useRef } from 'react';
 
 interface NavbarProps {
@@ -69,6 +69,9 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                                     <Upload size={18} />
                                     <span className="hidden sm:inline text-sm">Upload</span>
                                 </button>
+                                <Link to="/chat" className="p-2 rounded-full hover:bg-gray-100" title="Chat">
+                                    <MessageSquare size={20} className="text-gray-600" />
+                                </Link>
                                 <Link to="/notifications" className="relative p-2 rounded-full hover:bg-gray-100">
                                     <Bell size={20} className="text-gray-600" />
                                     {notificationCount > 0 && (

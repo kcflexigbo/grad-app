@@ -19,6 +19,7 @@ class NotificationType(enum.Enum):
     comment = 'comment'
     follow = 'follow'
     download = 'download'
+    chat_message = 'chat_message'
 
 
 class ReportStatus(enum.Enum):
@@ -38,6 +39,11 @@ media_albums = Table('media_albums', Base.metadata,
                      Column('media_id', Integer, ForeignKey('media.id', ondelete="CASCADE"), primary_key=True),
                      Column('album_id', Integer, ForeignKey('albums.id', ondelete="CASCADE"), primary_key=True)
                      )
+
+conversation_participants = Table('conversation_participants', Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id', ondelete="CASCADE"), primary_key=True),
+    Column('conversation_id', Integer, ForeignKey('conversations.id', ondelete="CASCADE"), primary_key=True)
+)
 
 
 class User(Base):
@@ -69,6 +75,8 @@ class User(Base):
                              cascade="all, delete-orphan")
     followers = relationship("Follow", foreign_keys="[Follow.following_id]", back_populates="followed_by",
                              cascade="all, delete-orphan")
+    sent_messages = relationship("Message", back_populates="sender", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", secondary=conversation_participants, back_populates="participants")
 
 
 # --- RENAMED: from Media to Media ---
@@ -203,3 +211,32 @@ class PasswordResetToken(Base):
     used_at = Column(DateTime(timezone=True), nullable=True) # To mark as used
 
     user = relationship("User")
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id = Column(Integer, primary_key=True, index=True)
+    type = Column(PyEnum(enum.Enum('ConversationType', {'one_to_one': 'one_to_one', 'group': 'group'}),
+                         name='conversation_type_enum'), nullable=False, default='one_to_one')  # Added name to enum
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    participants = relationship("User", secondary=conversation_participants, back_populates="conversations")
+    messages = relationship(
+        "Message",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="desc(Message.created_at)"
+    )
+
+
+class Message(Base):
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    conversation = relationship("Conversation", back_populates="messages")
+    sender = relationship("User", back_populates="sent_messages")

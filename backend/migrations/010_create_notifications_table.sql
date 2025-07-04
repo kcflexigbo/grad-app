@@ -1,4 +1,4 @@
-CREATE TYPE notification_type AS ENUM ('like', 'comment', 'follow', 'download');
+CREATE TYPE notification_type AS ENUM ('like', 'comment', 'follow', 'download','chat_message');
 CREATE TABLE notifications (
     id SERIAL PRIMARY KEY,
     recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
