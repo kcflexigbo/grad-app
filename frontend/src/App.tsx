@@ -33,6 +33,7 @@ import { FollowListPage } from './pages/FollowListPage.tsx';
 import { AdminReportsHistoryPage } from './pages/AdminReportsHistoryPage.tsx';
 import {ForgotPasswordPage} from "./pages/ForgotPasswordPage.tsx";
 import {ResetPasswordPage} from "./pages/ResetPasswordPage.tsx";
+import {ChatPage} from "./pages/ChatPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -134,6 +135,7 @@ function App() {
                             <Route path="album/:id" element={<AlbumDetailPage />} />
                             <Route path="settings" element={<SettingsPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
+                            <Route path="chat" element={<ChatPage />} />
                             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                             <Route path="/admin/reports/history" element={<AdminReportsHistoryPage />} />
                             <Route path="/leaderboard" element={<LeaderboardPage />} />

@@ -14,8 +14,9 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import subprocess
 from database_manager import SessionLocal, get_db
+import json
 
-import crud, models, schemas, security, oss_manager, database_manager, email_manager
+import crud, models, schemas, security, oss_manager, database_manager, email_manager, logs_manager
 from connection_manager import manager
 
 limiter = Limiter(key_func=get_remote_address)
@@ -38,6 +39,7 @@ notifications_router = APIRouter(prefix="/notifications", tags=["Notifications"]
 reports_router = APIRouter(prefix="/reports", tags=["Reports"])
 admin_router = APIRouter(prefix="/admin", tags=["Administration"])
 leaderboard_router = APIRouter(prefix="/leaderboard", tags=["Leaderboard"])
+chat_router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
 origins = [
@@ -108,10 +110,10 @@ def process_video_in_background(temp_path_str: str, media_id: int):
             db.commit()
 
     except subprocess.CalledProcessError as e:
-        # This gives you more detail if ffmpeg itself fails
-        print(f"FFmpeg failed for media_id {media_id}:")
-        print(f"Stderr: {e.stderr}")
-        print(f"Stdout: {e.stdout}")
+        with open(logs_manager.logs_file, 'a') as file:
+            print(f"FFmpeg failed for media_id {media_id}:", file=file)
+            print(f"Stderr: {e.stderr}", file=file)
+            print(f"Stdout: {e.stdout}", file=file)
     except Exception as e:
         print(f"Failed to process video for media_id {media_id}: {e}")
 
@@ -137,7 +139,87 @@ async def websocket_notifications_endpoint(websocket: WebSocket, token: str,
         await websocket.close()
 
 
-@app.websocket("/ws/comments/{media_id}")  # RENAMED from image_id
+@app.websocket("/ws/chat/{conversation_id}")
+async def websocket_chat_endpoint(
+        websocket: WebSocket,
+        conversation_id: int,
+        token: str,
+        db: Session = Depends(database_manager.get_db)
+):
+    """
+    Handles real-time chat communication for a specific conversation.
+    1. Authenticates the user via the token.
+    2. Verifies the user is a valid participant of the conversation.
+    3. Joins a dedicated WebSocket 'room' for the conversation.
+    4. Listens for incoming messages, saves them to the DB, and broadcasts them to other room members.
+    """
+    try:
+        current_user = security.get_current_user(token=token, db=db)
+    except HTTPException:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    conversation = (
+        db.query(models.Conversation)
+        .filter(models.Conversation.id == conversation_id)
+        .filter(models.Conversation.participants.any(id=current_user.id))
+        .first()
+    )
+
+    if not conversation:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    participant_ids = sorted([p.id for p in conversation.participants])
+    # For now, we assume 1-on-1 chat. For group chat, you might use the conversation ID itself.
+    if conversation.type == 'one_to_one':
+        room_name = f"chat-{participant_ids[0]}-{participant_ids[1]}"
+    else:  # Future-proofing for group chats
+        room_name = f"chat_group-{conversation.id}"
+
+    await manager.connect_to_room(room_name, websocket)
+
+    try:
+        while True:
+            raw_data = await websocket.receive_text()
+
+            try:
+                # Parse the incoming JSON data.
+                message_data = json.loads(raw_data)
+                content = message_data.get("content")
+
+                # Basic validation to ensure content is present and is a string.
+                if not content or not isinstance(content, str):
+                    continue  # Ignore malformed messages.
+
+            except json.JSONDecodeError:
+                # If the message isn't valid JSON, ignore it and continue listening.
+                continue
+
+            # Step 6: Save the validated message to the database.
+            db_message = crud.create_message(
+                db=db,
+                sender_id=current_user.id,
+                conversation_id=conversation_id,
+                content=content
+            )
+
+            await manager.broadcast_to_room(
+                room_name,
+                schemas.Message.model_validate(db_message).model_dump_json()
+            )
+
+    except WebSocketDisconnect:
+        manager.disconnect_from_room(room_name, websocket)
+
+    except Exception as e:
+        with open(logs_manager.logs_file, 'a') as  file:
+            print(f"Error in chat websocket for room {room_name}: {e}", file=file)
+        manager.disconnect_from_room(room_name, websocket)
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+
+
+@app.websocket("/ws/comments/{media_id}")
 async def websocket_comments_endpoint(websocket: WebSocket, media_id: int):
     room_name = f"media-{media_id}"  # RENAMED from image-
     await manager.connect_to_room(room_name, websocket)
@@ -529,11 +611,9 @@ def delete_media_by_user(
         oss_manager.delete_file_from_oss(media.media_url)
 
     except Exception as e:
-        # Log the actual error to your server logs for debugging
-        print(f"ERROR during media deletion: {e}")
-        # Rollback the transaction if the DB delete failed
+        with open(logs_manager.logs_file, 'a') as file:
+            print(f"ERROR during media deletion: {e}")
         db.rollback()
-        # Return a proper server error instead of crashing
         raise HTTPException(status_code=500, detail="Could not delete the media item due to a server error.")
 
     return  # Implicitly returns 204 No Content
@@ -786,7 +866,8 @@ def delete_media_by_admin(
         crud.delete_media(db, media=media)
         oss_manager.delete_file_from_oss(media.media_url)
     except Exception as e:
-        print(f"ERROR during admin media deletion: {e}")
+        with open(logs_manager.logs_file, "a") as file:
+            print(f"ERROR during admin media deletion: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not delete the media item due to a server error.")
 
@@ -829,6 +910,85 @@ def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manage
         user_list.append(user)
     return user_list
 
+#--- CHAT ENDPOINTS ---
+
+@chat_router.post("/conversations", response_model=schemas.Conversation)
+def start_or_get_conversation(
+        payload: schemas.StartConversationRequest,  # You'll need to create this schema
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    Finds an existing 1-on-1 conversation with a user or creates a new one.
+    This prevents duplicate conversations.
+    """
+    if current_user.id == payload.user_id:
+        raise HTTPException(status_code=400, detail="Cannot start a conversation with yourself.")
+
+    # Check if the other user exists
+    user_to_chat_with = crud.get_user(db, user_id=payload.user_id)
+    if not user_to_chat_with:
+        raise HTTPException(status_code=404, detail="User to chat with not found.")
+
+    # Check if a 1-on-1 conversation already exists
+    conversation = crud.find_one_on_one_conversation(db, user1_id=current_user.id, user2_id=payload.user_id)
+
+    if not conversation:
+        # If it doesn't exist, create it
+        conversation = crud.create_conversation(db, user_ids=[current_user.id, payload.user_id])
+
+    # Add last_message to the response schema if available
+    if conversation.messages:
+        conversation.last_message = conversation.messages[0]
+    else:
+        conversation.last_message = None
+
+    return conversation
+
+
+@chat_router.get("/conversations", response_model=List[schemas.Conversation])
+def get_user_conversations(
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    Gets all of the current user's conversations, ordered by the most recent message.
+    """
+    conversations = crud.get_user_conversations(db, user_id=current_user.id)
+
+    # Manually assign the last message to the schema object
+    for conv in conversations:
+        if conv.messages:
+            conv.last_message = conv.messages[0]
+        else:
+            conv.last_message = None
+
+    return conversations
+
+
+@chat_router.get("/conversations/{conversation_id}/messages", response_model=List[schemas.Message])
+def get_conversation_messages(
+        conversation_id: int,
+        skip: int = 0,
+        limit: int = 50,
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
+):
+    """
+    Retrieves a paginated list of messages for a given conversation.
+    Ensures the current user is a participant before returning messages.
+    """
+    # Security check: Ensure the current user is part of the conversation
+    conversation = db.query(models.Conversation).filter(
+        models.Conversation.id == conversation_id,
+        models.Conversation.participants.any(id=current_user.id)
+    ).first()
+
+    if not conversation:
+        raise HTTPException(status_code=403, detail="Not authorized to view this conversation.")
+
+    messages = crud.get_messages_for_conversation(db, conversation_id=conversation_id, skip=skip, limit=limit)
+    return messages
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -840,3 +1000,4 @@ app.include_router(notifications_router)
 app.include_router(reports_router)
 app.include_router(admin_router)
 app.include_router(leaderboard_router)
+app.include_router(chat_router)

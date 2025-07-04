@@ -546,3 +546,108 @@ def use_password_reset_token(db: Session, db_token: models.PasswordResetToken) -
     db.commit()
     db.refresh(db_token)
     return db_token
+
+
+# --- Chat CRUD Functions ---
+
+def find_one_on_one_conversation(db: Session, user1_id: int, user2_id: int) -> Optional[models.Conversation]:
+    """
+    Finds an existing one-on-one conversation between two users.
+    This is crucial to prevent creating duplicate chat rooms for the same two people.
+    """
+    return (
+        db.query(models.Conversation)
+        .join(models.conversation_participants)
+        .filter(models.conversation_participants.c.user_id.in_([user1_id, user2_id]))
+        .filter(models.Conversation.type == 'one_to_one')
+        .group_by(models.Conversation.id)
+        .having(func.count(models.Conversation.id) == 2)  # Ensures ONLY these two users are in it
+        .first()
+    )
+
+
+def create_conversation(db: Session, user_ids: List[int]) -> models.Conversation:
+    """
+    Creates a new conversation and adds the specified users as participants.
+    """
+    # Retrieve the user models from the database
+    participants = db.query(models.User).filter(models.User.id.in_(user_ids)).all()
+    if len(participants) != len(user_ids):
+        # This would mean one of the user IDs was invalid.
+        # In a real app, you might raise an HTTPException here.
+        raise ValueError("One or more user IDs are invalid.")
+
+    # Create the conversation
+    db_conversation = models.Conversation(type='one_to_one' if len(participants) == 2 else 'group')
+
+    # Add participants to the conversation
+    db_conversation.participants.extend(participants)
+
+    db.add(db_conversation)
+    db.commit()
+    db.refresh(db_conversation)
+    return db_conversation
+
+
+def create_message(db: Session, sender_id: int, conversation_id: int, content: str) -> models.Message:
+    """
+    Creates and saves a new chat message to the database.
+    """
+    db_message = models.Message(
+        sender_id=sender_id,
+        conversation_id=conversation_id,
+        content=content
+    )
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    # Eagerly load the sender information for the response
+    db.refresh(db_message, attribute_names=['sender'])
+    return db_message
+
+
+def get_user_conversations(db: Session, user_id: int) -> list[type[models.Conversation]]:
+    """
+    Retrieves all conversations a given user is a part of.
+    Orders them by the timestamp of the last message.
+    """
+    # Subquery to find the time of the latest message in each conversation
+    latest_message_subquery = (
+        db.query(
+            models.Message.conversation_id,
+            func.max(models.Message.created_at).label("latest_message_time")
+        )
+        .group_by(models.Message.conversation_id)
+        .subquery()
+    )
+
+    return (
+        db.query(models.Conversation)
+        .join(models.Conversation.participants)
+        .outerjoin(latest_message_subquery, models.Conversation.id == latest_message_subquery.c.conversation_id)
+        .filter(models.User.id == user_id)
+        .options(
+            selectinload(models.Conversation.participants),
+            selectinload(models.Conversation.messages)
+        )
+        .order_by(func.coalesce(latest_message_subquery.c.latest_message_time, models.Conversation.created_at).desc())
+        .all()
+    )
+
+
+def get_messages_for_conversation(db: Session, conversation_id: int, skip: int = 0, limit: int = 50) \
+        -> list[type[models.Message]]:
+    """
+    Retrieves a paginated list of messages for a specific conversation.
+    The messages are returned in descending chronological order (newest first),
+    which is ideal for "infinite scroll" loading upwards in a chat UI.
+    """
+    return (
+        db.query(models.Message)
+        .filter(models.Message.conversation_id == conversation_id)
+        .options(selectinload(models.Message.sender))  # Eager load sender info
+        .order_by(models.Message.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
