@@ -522,10 +522,21 @@ def delete_media_by_user(
     if media.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to delete this media")
 
-    oss_manager.delete_file_from_oss(media.media_url)
+    # --- ADDED A TRY/EXCEPT BLOCK ---
+    try:
+        crud.delete_media(db, media=media)
 
-    crud.delete_media(db, media=media)
-    return
+        oss_manager.delete_file_from_oss(media.media_url)
+
+    except Exception as e:
+        # Log the actual error to your server logs for debugging
+        print(f"ERROR during media deletion: {e}")
+        # Rollback the transaction if the DB delete failed
+        db.rollback()
+        # Return a proper server error instead of crashing
+        raise HTTPException(status_code=500, detail="Could not delete the media item due to a server error.")
+
+    return  # Implicitly returns 204 No Content
 
 
 @media_router.put("/{media_id}", response_model=schemas.Media)
