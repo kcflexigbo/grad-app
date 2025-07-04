@@ -47,21 +47,15 @@ const AppLayout = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const queryClient = useQueryClient();
     const { isLoggedIn } = useAuth();
-    const [unreadCount, setUnreadCount] = useState(0);
 
-    const { data: response } = useQuery({
+    const { data: notificationsResponse } = useQuery({
         queryKey: ['notifications'],
         queryFn: () => apiService.get<NotificationType[]>('/notifications'),
         enabled: isLoggedIn,
+        staleTime: 1000 * 60, // 1 minute
     });
 
-    useEffect(() => {
-        if (response?.data) {
-            const notificationsArray = response.data;
-            const count = notificationsArray.filter(n => !n.is_read).length;
-            setUnreadCount(count);
-        }
-    }, [response]);
+    const unreadCount = notificationsResponse?.data?.filter(n => !n.is_read).length ?? 0;
 
     const token = localStorage.getItem('accessToken');
     const wsUrl = isLoggedIn ? `${WS_URL}/ws/notifications?token=${token}` : null;
@@ -69,7 +63,7 @@ const AppLayout = () => {
 
     useEffect(() => {
         if (lastMessage) {
-            setUnreadCount(prev => prev + 1);
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
 
             if (lastMessage.type === 'chat_message') {
                 toast(
@@ -86,7 +80,6 @@ const AppLayout = () => {
                 queryClient.invalidateQueries({ queryKey: ['conversations'] });
             }
 
-            queryClient.invalidateQueries({ queryKey: ['notifications'] });
         }
     }, [lastMessage, queryClient]);
 
