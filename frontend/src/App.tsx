@@ -33,6 +33,8 @@ import { FollowListPage } from './pages/FollowListPage.tsx';
 import { AdminReportsHistoryPage } from './pages/AdminReportsHistoryPage.tsx';
 import {ForgotPasswordPage} from "./pages/ForgotPasswordPage.tsx";
 import {ResetPasswordPage} from "./pages/ResetPasswordPage.tsx";
+import {ChatPage} from "./pages/ChatPage.tsx";
+import toast, {Toaster} from "react-hot-toast";
 
 const queryClient = new QueryClient();
 
@@ -45,21 +47,15 @@ const AppLayout = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const queryClient = useQueryClient();
     const { isLoggedIn } = useAuth();
-    const [unreadCount, setUnreadCount] = useState(0);
 
-    const { data: response } = useQuery({
+    const { data: notificationsResponse } = useQuery({
         queryKey: ['notifications'],
         queryFn: () => apiService.get<NotificationType[]>('/notifications'),
         enabled: isLoggedIn,
+        staleTime: 1000 * 60, // 1 minute
     });
 
-    useEffect(() => {
-        if (response?.data) {
-            const notificationsArray = response.data;
-            const count = notificationsArray.filter(n => !n.is_read).length;
-            setUnreadCount(count);
-        }
-    }, [response]);
+    const unreadCount = notificationsResponse?.data?.filter(n => !n.is_read).length ?? 0;
 
     const token = localStorage.getItem('accessToken');
     const wsUrl = isLoggedIn ? `${WS_URL}/ws/notifications?token=${token}` : null;
@@ -67,8 +63,23 @@ const AppLayout = () => {
 
     useEffect(() => {
         if (lastMessage) {
-            setUnreadCount(prev => prev + 1);
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
+
+            if (lastMessage.type === 'chat_message') {
+                toast(
+                    (t) => (
+                        <span onClick={() => toast.dismiss(t.id)}>
+                            New message from <b>{lastMessage.actor.username}</b>
+                            <Link to={`/chat?id=${lastMessage.related_entity_id}`} className="font-bold text-blue-400 ml-2">
+                               View
+                            </Link>
+                        </span>
+                    ),
+                    { icon: '💬' }
+                );
+                queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            }
+
         }
     }, [lastMessage, queryClient]);
 
@@ -79,12 +90,10 @@ const AppLayout = () => {
     };
 
     return (
-        // --- MODIFICATION: Removed bg-gray-50 to allow body background to show ---
         <div className="flex flex-col min-h-screen font-sans">
             <Navbar onUploadClick={() => setIsUploadModalOpen(true)} notificationCount={unreadCount} />
 
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* --- NEW: Content Card Wrapper for Glassmorphism Effect --- */}
                 <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 sm:p-10">
                     <Outlet />
                 </div>
@@ -125,6 +134,17 @@ function App() {
         <QueryClientProvider client={queryClient}>
             <Router>
                 <AuthProvider>
+                    <Toaster
+                      position="top-right"
+                      reverseOrder={false}
+                      toastOptions={{
+                        duration: 8000,
+                        style: {
+                          background: '#333',
+                          color: '#fff',
+                        },
+                      }}
+                    />
                     <Routes>
                         <Route path="/" element={<AppLayout />}>
                             <Route index element={<HomePage />} />
@@ -134,6 +154,7 @@ function App() {
                             <Route path="album/:id" element={<AlbumDetailPage />} />
                             <Route path="settings" element={<SettingsPage />} />
                             <Route path="notifications" element={<NotificationsPage />} />
+                            <Route path="chat" element={<ChatPage />} />
                             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                             <Route path="/admin/reports/history" element={<AdminReportsHistoryPage />} />
                             <Route path="/leaderboard" element={<LeaderboardPage />} />

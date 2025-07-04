@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import {useParams, Link, useNavigate} from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import apiService from '../api/apiService';
 import type { User } from '../types/user';
-import type { Media } from '../types/media'; // Use Media type
-import { Camera, BookCopy, Plus, Trash2 } from 'lucide-react';
+import type { Media } from '../types/media';
+import type { Conversation } from '../types/chat';
+import { Camera, BookCopy, Plus, Trash2, MessageCircle } from 'lucide-react';
 
 import { MediaGrid } from '../components/MediaGrid'; // Use MediaGrid
 import { SkeletonLoader as GridSkeletonLoader } from '../components/ui/SkeletonLoader';
@@ -14,6 +15,7 @@ import { useAuth } from '../hooks/useAuth';
 import { ProfilePictureModal } from '../components/ProfilePictureModal';
 import { CreateAlbumModal } from "../components/CreateAlbumModal.tsx";
 import {PageHelmet} from "../components/layout/PageHelmet.tsx";
+
 
 interface AlbumSummary {
     id: number;
@@ -63,12 +65,24 @@ export const ProfilePage = () => {
 
     const [isPfpModalOpen, setIsPfpModalOpen] = useState(false);
     const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'media' | 'albums'>('media'); // Renamed
+    const [activeTab, setActiveTab] = useState<'media' | 'albums'>('media');
+    const navigate = useNavigate();
 
     const { data: profile, isLoading, isError, error } = useQuery({
         queryKey: ['profile', username],
         queryFn: () => fetchProfile(username!),
         enabled: !!username,
+    });
+
+    const startConversationMutation = useMutation({
+        mutationFn: (userId: number) => apiService.post<Conversation>('/chat/conversations', { user_id: userId }),
+        onSuccess: (data) => {
+            // On success, navigate to the chat page with the new conversation ID
+            navigate(`/chat?id=${data.data.id}`);
+        },
+        onError: () => {
+            toast.error("Could not start conversation.");
+        }
     });
 
     const isOwnProfile = currentUser?.username === username;
@@ -97,6 +111,12 @@ export const ProfilePage = () => {
         });
         if(isOwnProfile) {
             queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
+        }
+    };
+
+    const handleStartChat = () => {
+        if (profile) {
+            startConversationMutation.mutate(profile.id);
         }
     };
 
@@ -137,10 +157,20 @@ export const ProfilePage = () => {
                         <div className="flex items-center justify-center md:justify-start gap-4">
                             <h1 className="text-3xl font-bold text-gray-800">{profile.username}</h1>
                             {!isOwnProfile && (
-                                <FollowButton
-                                    userIdToFollow={profile.id}
-                                    initialIsFollowing={profile.is_followed_by_current_user || false}
-                                />
+                                <>
+                                    <FollowButton
+                                        userIdToFollow={profile.id}
+                                        initialIsFollowing={profile.is_followed_by_current_user || false}
+                                    />
+                                    <button
+                                        onClick={handleStartChat}
+                                        disabled={startConversationMutation.isPending}
+                                        className="flex items-center gap-2 font-semibold px-4 py-2 rounded-md transition-colors bg-gray-600 text-white hover:bg-gray-700 disabled:bg-gray-400"
+                                    >
+                                        <MessageCircle size={18}/>
+                                        <span>Message</span>
+                                    </button>
+                                </>
                             )}
                         </div>
                         <div className="flex justify-center md:justify-start gap-6 mt-4 text-gray-600">

@@ -1,9 +1,12 @@
-export interface User {
+export interface UserSimple {
     id: number;
     username: string;
+    profile_picture_url?: string | null;
+}
+
+export interface User extends UserSimple {
     email: string;
     bio?: string | null;
-    profile_picture_url?: string | null;
     allow_downloads: boolean;
     is_admin?: boolean;
     followers_count?: number;

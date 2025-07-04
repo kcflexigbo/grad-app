@@ -225,7 +225,31 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+# --- Chat Schemas ---
+class MessageBase(BaseModel):
+    content: str
+
+class MessageCreate(MessageBase):
+    pass
+
+class Message(MessageBase, BaseSchema):
+    id: int
+    conversation_id: int
+    sender_id: int
+    created_at: datetime
+    sender: UserSimple
+
+class Conversation(BaseSchema):
+    id: int
+    type: str # 'one_to_one' or 'group'
+    participants: List[UserSimple]
+    last_message: Optional[Message] = None # Need to add logic for this
+
+class StartConversationRequest(BaseModel):
+    user_id: int
+
 # --- Rebuild Models with Forward References ---
 Album.model_rebuild()
 User.model_rebuild()
 UserProfile.model_rebuild()
+Conversation.model_rebuild()
