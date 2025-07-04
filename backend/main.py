@@ -782,9 +782,14 @@ def delete_media_by_admin(
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    oss_manager.delete_file_from_oss(media.media_url)
+    try:
+        crud.delete_media(db, media=media)
+        oss_manager.delete_file_from_oss(media.media_url)
+    except Exception as e:
+        print(f"ERROR during admin media deletion: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not delete the media item due to a server error.")
 
-    crud.delete_media(db, media=media)
     return
 
 
