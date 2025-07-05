@@ -1,5 +1,6 @@
 import os
 import uuid
+from contextlib import asynccontextmanager
 from datetime import timedelta, datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -7,7 +8,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, File, Up
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -58,6 +59,53 @@ origins = [
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"])
 
+MALICIOUS_ROUTES = {
+    "/.env",
+        "/env.template",
+        "/env/test.ini",
+        "/dev-env/.env",
+        "/helpers/.env",
+        "/data/env.txt",
+        "/current/.env",
+        "/dev"
+        "/.git/config",
+        "/admin",
+        "/wp-admin",
+        "/cgi-bin/luci",
+        "/aws-secrets.yaml",
+        "/phpinfo",
+}
+
+# Middleware to check and ban malicious IPs
+@app.middleware("http")
+async def ban_malicious_ips(request: Request, call_next):
+    path = request.url.path
+
+    if path in MALICIOUS_ROUTES:
+        attacker_ip = request.client.host
+        print(f"🚨 Blocking attacker IP: {attacker_ip} for accessing {path}")
+        try:
+            subprocess.run(["iptables", "-A", "INPUT", "-s", attacker_ip, "-j", "DROP"], check=True)
+        except subprocess.CalledProcessError as e:
+            with open(logs_manager.logs_file, "a") as file:
+                print(f"{datetime.now()}: Failed to ban IP: {e}", file)
+        subprocess.run("iptables-save > /etc/iptables/rules.v4", shell=True)
+
+        with open("logs/honeypot.log", "a") as f:
+            f.write(f"Blocked {attacker_ip} for accessing {path}\n")
+
+        # Return fake error to avoid suspicion
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Not Found"},
+        )
+
+    return await call_next(request)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    subprocess.run("iptables-restore < /etc/iptables/rules.v4", shell=True)
+    yield
 
 # --- General & WebSocket Endpoints ---
 @app.get("/", tags=["General"])
