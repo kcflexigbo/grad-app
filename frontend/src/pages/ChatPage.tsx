@@ -113,6 +113,11 @@ export const ChatPage = () => {
         }
     };
 
+    const handleGoBack = () => {
+        setSelectedConversationId(null);
+        setSearchParams({}); // Clear the URL parameter
+    };
+
     const selectedConversation = conversations?.find(c => c.id === selectedConversationId);
 
     return (
@@ -128,6 +133,7 @@ export const ChatPage = () => {
                 isLoadingMessages={isLoadingMessages && allMessages.length === 0}
                 hasMoreMessages={!!hasNextPage}
                 onLoadMoreMessages={fetchNextPage}
+                onGoBack={handleGoBack}
             />
         </>
     );

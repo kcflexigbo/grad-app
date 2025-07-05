@@ -14,6 +14,7 @@ interface ChatLayoutProps {
     isLoadingMessages: boolean;
     hasMoreMessages: boolean;
     onLoadMoreMessages: () => void;
+    onGoBack: () => void;
 }
 
 export const ChatLayout = ({
@@ -26,12 +27,18 @@ export const ChatLayout = ({
     isLoadingMessages,
     hasMoreMessages,
     onLoadMoreMessages,
+    onGoBack,
 }: ChatLayoutProps) => {
 
     return (
         <div className="flex border rounded-lg overflow-hidden shadow-md" style={{ height: '75vh' }}>
             {/* Sidebar with Conversation List */}
-            <aside className="w-1/3 min-w-[280px] max-w-[360px] bg-gray-50 border-r overflow-y-auto">
+            {/* On mobile, this is hidden when a chat is open. On desktop, it's a block. */}
+            <aside className={`
+                ${selectedConversation ? 'hidden' : 'block w-full'}
+                md:block md:w-1/3 md:min-w-[280px] md:max-w-[360px]
+                bg-gray-50 border-r overflow-y-auto transition-all duration-300
+            `}>
                 <div className="p-4 border-b">
                     <h1 className="text-xl font-bold">Chats</h1>
                 </div>
@@ -46,7 +53,11 @@ export const ChatLayout = ({
             </aside>
 
             {/* Main Chat Window */}
-            <main className="flex-grow h-full">
+            {/* On mobile, this is shown only when a chat is open. On desktop, it's always visible. */}
+            <main className={`
+                ${selectedConversation ? 'block w-full' : 'hidden'}
+                md:block md:flex-grow h-full
+            `}>
                 {selectedConversation ? (
                     <ChatWindow
                         conversation={selectedConversation}
@@ -55,6 +66,7 @@ export const ChatLayout = ({
                         isLoadingMessages={isLoadingMessages}
                         hasMoreMessages={hasMoreMessages}
                         onLoadMoreMessages={onLoadMoreMessages}
+                        onGoBack={onGoBack}
                     />
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center text-gray-500">
