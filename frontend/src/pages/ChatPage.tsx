@@ -80,12 +80,26 @@ export const ChatPage = () => {
     // Handle incoming WebSocket messages
     useEffect(() => {
         if (lastMessage) {
-            // Add the new message to the react-query cache for instant UI update
             queryClient.setQueryData(['messages', lastMessage.conversation_id], (oldData: any) => {
-                if (!oldData) return oldData;
-                const lastPage = oldData.pages[oldData.pages.length - 1];
-                lastPage.messages.push(lastMessage);
-                return { ...oldData };
+                if (!oldData || !oldData.pages) {
+                     return oldData;
+                }
+
+                // Create a deep copy to ensure immutability
+                const newData = {
+                    ...oldData,
+                    pages: oldData.pages.map((page: any, index: number) => {
+                        // Only add the new message to the very last page
+                        if (index === oldData.pages.length - 1) {
+                            return {
+                                ...page,
+                                messages: [...page.messages, lastMessage],
+                            };
+                        }
+                        return page;
+                    }),
+                };
+                return newData;
             });
 
              // Also update the last_message in the conversations list for the sidebar
