@@ -74,7 +74,14 @@ MALICIOUS_ROUTES = {
         "/cgi-bin/luci",
         "/aws-secrets.yaml",
         "/phpinfo",
+        "/Autodiscover/Autodiscover.xml",
+
 }
+
+def get_real_ip(request: Request) -> str:
+    if "x-forwarded-for" in request.headers:
+        return request.headers["x-forwarded-for"].split(',')[0].strip()
+    return request.client.host
 
 # Middleware to check and ban malicious IPs
 @app.middleware("http")
@@ -82,7 +89,7 @@ async def ban_malicious_ips(request: Request, call_next):
     path = request.url.path
 
     if path in MALICIOUS_ROUTES:
-        attacker_ip = request.client.host
+        attacker_ip = get_real_ip(request)
         print(f"🚨 Blocking attacker IP: {attacker_ip} for accessing {path}")
         try:
             subprocess.run(["iptables", "-A", "INPUT", "-s", attacker_ip, "-j", "DROP"], check=True)
