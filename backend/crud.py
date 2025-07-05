@@ -61,36 +61,12 @@ def get_top_liked_media(db: Session, limit: int = 10):
     """
     Retrieves a list of the most liked media (media and videos).
     """
-    comment_count_subquery = (
-        db.query(
-            models.Comment.media_id,
-            func.count(models.Comment.id).label("comment_count")
-        )
-        .group_by(models.Comment.media_id)
-        .subquery()
+    return (
+        db.query(models.Media)
+        .order_by(models.Media.like_count.desc())
+        .limit(limit)
+        .all()
     )
-
-    like_count_subquery = (
-        db.query(
-            models.Like.media_id,
-            func.count(models.Like.user_id).label("like_count")
-        )
-        .group_by(models.Like.media_id)
-        .subquery()
-    )
-
-    query = (
-        db.query(
-            models.Media,
-            func.coalesce(like_count_subquery.c.like_count, 0).label("like_count"),
-            func.coalesce(comment_count_subquery.c.comment_count, 0).label("comment_count")
-        )
-        .outerjoin(like_count_subquery, models.Media.id == like_count_subquery.c.media_id)
-        .outerjoin(comment_count_subquery, models.Media.id == comment_count_subquery.c.media_id)
-        .order_by(func.coalesce(like_count_subquery.c.like_count, 0).desc())
-    )
-
-    return query.limit(limit).all()
 
 
 def get_most_followed_users(db: Session, limit: int = 10):
@@ -98,13 +74,8 @@ def get_most_followed_users(db: Session, limit: int = 10):
     Retrieves a list of the most followed users. (Unchanged)
     """
     return (
-        db.query(
-            models.User,
-            func.count(models.Follow.follower_id).label("followers_count")
-        )
-        .outerjoin(models.Follow, models.User.id == models.Follow.following_id)
-        .group_by(models.User.id)
-        .order_by(func.count(models.Follow.follower_id).desc())
+        db.query(models.User)
+        .order_by(models.User.followers_count.desc())
         .limit(limit)
         .all()
     )
@@ -148,44 +119,19 @@ def get_media(db: Session, media_id: int):
 
 def get_all_media(db: Session, sort_by: str = "newest", skip: int = 0, limit: int = 20):
     """
-    Retrieves a paginated list of all media, with sorting options,
-    and pre-calculates like and comment counts.
+    Retrieves a paginated list of all media, with sorting options.
+    NOW HIGHLY EFFICIENT. Like/comment counts come from the model.
     """
-    comment_count_subquery = (
-        db.query(
-            models.Comment.media_id,
-            func.count(models.Comment.id).label("comment_count")
-        )
-        .group_by(models.Comment.media_id)
-        .subquery()
-    )
-
-    like_count_subquery = (
-        db.query(
-            models.Like.media_id,
-            func.count(models.Like.user_id).label("like_count")
-        )
-        .group_by(models.Like.media_id)
-        .subquery()
-    )
-
-    query = (
-        db.query(
-            models.Media,
-            func.coalesce(like_count_subquery.c.like_count, 0).label("like_count"),
-            func.coalesce(comment_count_subquery.c.comment_count, 0).label("comment_count")
-        )
-        .outerjoin(like_count_subquery, models.Media.id == like_count_subquery.c.media_id)
-        .outerjoin(comment_count_subquery, models.Media.id == comment_count_subquery.c.media_id)
-    )
+    # The complex subqueries are no longer needed!
+    query = db.query(models.Media)
 
     if sort_by == "popular":
-        query = query.order_by(func.coalesce(like_count_subquery.c.like_count, 0).desc())
+        query = query.order_by(models.Media.like_count.desc(), models.Media.created_at.desc())
     elif sort_by == "featured":
         query = query.filter(models.Media.is_featured == True).order_by(
             models.Media.created_at.desc()
         )
-    else:
+    else: # "newest"
         query = query.order_by(models.Media.created_at.desc())
 
     return query.offset(skip).limit(limit).all()

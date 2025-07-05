@@ -2,9 +2,11 @@ from sqlalchemy import (
     create_engine, Column, Integer, String, Text, Boolean, DateTime,
     ForeignKey, Table, Enum as PyEnum
 )
-from sqlalchemy.orm import relationship, declarative_base
-from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship, declarative_base, column_property
+from sqlalchemy.sql import func, select
 import enum
+
+from backend.schemas import Follow, Like, Comment
 from database_manager import Base
 
 
@@ -60,6 +62,19 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    followers_count = column_property(
+        select(func.count(Follow.follower_id))
+        .where(Follow.following_id == id)
+        .correlate_except(Follow)
+        .scalar_subquery()
+    )
+    following_count = column_property(
+        select(func.count(Follow.following_id))
+        .where(Follow.follower_id == id)
+        .correlate_except(Follow)
+        .scalar_subquery()
+    )
+
     # --- RENAMED: from 'media' to 'media' ---
     media = relationship("Media", back_populates="owner", cascade="all, delete-orphan")
     albums = relationship("Album", back_populates="owner", cascade="all, delete-orphan")
@@ -84,17 +99,26 @@ class Media(Base):
     __tablename__ = "media"  # Table renamed from 'media'
 
     id = Column(Integer, primary_key=True, index=True)
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # --- RENAMED: from image_url to media_url ---
     media_url = Column(String(255), nullable=False)
-
-    # --- NEW: Column to store the type of media ---
     media_type = Column(PyEnum(MediaType), nullable=False, default=MediaType.image)
-
     caption = Column(Text, nullable=True)
     is_featured = Column(Boolean, nullable=False, default=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    like_count = column_property(
+        select(func.count(Like.user_id))
+        .where(Like.media_id == id)
+        .correlate_except(Like)
+        .scalar_subquery()
+    )
+    comment_count = column_property(
+        select(func.count(Comment.id))
+        .where(Comment.media_id == id)
+        .correlate_except(Comment)
+        .scalar_subquery()
+    )
 
     # --- UPDATED: Relationships now point to/from 'Media' ---
     owner = relationship("User", back_populates="media")

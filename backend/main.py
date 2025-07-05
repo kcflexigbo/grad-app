@@ -376,10 +376,6 @@ def get_user_profile(
     if profile_user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Calculate follower/following counts
-    profile_user.followers_count = crud.get_follower_count_for_user(db, user_id=profile_user.id)
-    profile_user.following_count = crud.get_following_count_for_user(db, user_id=profile_user.id)
-
     # Calculate follow status for the current user
     is_following = False
     if current_user and current_user.id != profile_user.id:
@@ -532,12 +528,7 @@ def get_user_following_list(
 def get_all_media(sort_by: str = "newest", skip: int = 0, limit: int = 20,
                   db: Session = Depends(database_manager.get_db)):
     results = crud.get_all_media(db=db, sort_by=sort_by, skip=skip, limit=limit)
-    media_with_counts = []
-    for media, like_count, comment_count in results:
-        media.like_count = like_count
-        media.comment_count = comment_count
-        media_with_counts.append(media)
-    return media_with_counts
+    return results
 
 
 @media_router.post("", response_model=List[schemas.Media])
@@ -607,9 +598,6 @@ def get_media_by_id(media_id: int, db: Session = Depends(database_manager.get_db
                     current_user: Optional[models.User] = Depends(security.get_optional_current_user)):
     db_media = crud.get_media(db, media_id=media_id)
     if db_media is None: raise HTTPException(status_code=404, detail="Media not found")
-
-    db_media.like_count = crud.get_like_count_for_media(db, media_id=media_id)
-    db_media.comment_count = crud.get_comment_count_for_media(db, media_id=media_id)
 
     is_liked = False
     if current_user:
@@ -919,24 +907,14 @@ def delete_comment_by_admin(
 @leaderboard_router.get("/media", response_model=List[schemas.Media])  # RENAMED from /media
 def get_leaderboard_media(limit: int = 10, db: Session = Depends(database_manager.get_db)):
     results = crud.get_top_liked_media(db=db, limit=limit)
-    media_with_counts = []
-    for media, like_count, comment_count in results:
-        media.like_count = like_count
-        media.comment_count = comment_count
-        media_with_counts.append(media)
-    return media_with_counts
+    return results
 
 
 @leaderboard_router.get("/users", response_model=List[schemas.User])
 def get_leaderboard_users(limit: int = 10, db: Session = Depends(database_manager.get_db)):
     """ Gets the top N most followed users. """
     results = crud.get_most_followed_users(db=db, limit=limit)
-    user_list = []
-    for user, followers_count in results:
-        user.followers_count = followers_count
-        user.following_count = crud.get_following_count_for_user(db, user_id=user.id)
-        user_list.append(user)
-    return user_list
+    return results
 
 #--- CHAT ENDPOINTS ---
 
