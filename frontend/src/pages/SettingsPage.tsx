@@ -16,9 +16,6 @@ export const SettingsPage = () => {
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
-    // The 'message' state is no longer needed
-    // const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
     const updateProfileMutation = useMutation({
         mutationFn: (updatedData: { bio?: string; allow_downloads?: boolean }) =>
             apiService.put('/users/me', updatedData),

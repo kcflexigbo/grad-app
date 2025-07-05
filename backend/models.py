@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship, declarative_base, column_property
 from sqlalchemy.sql import func, select
 import enum
 
-from backend.schemas import Follow, Like, Comment
+from schemas import Follow, Like, Comment
 from database_manager import Base
 
 
