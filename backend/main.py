@@ -111,11 +111,11 @@ def process_video_in_background(temp_path_str: str, media_id: int):
 
     except subprocess.CalledProcessError as e:
         with open(logs_manager.logs_file, 'a') as file:
-            print(f"FFmpeg failed for media_id {media_id}:", file=file)
-            print(f"Stderr: {e.stderr}", file=file)
-            print(f"Stdout: {e.stdout}", file=file)
+            print(f"{datetime.now()}: FFmpeg failed for media_id {media_id}:", file=file)
+            print(f"{datetime.now()}: Stderr: {e.stderr}", file=file)
+            print(f"{datetime.now()}: Stdout: {e.stdout}", file=file)
     except Exception as e:
-        print(f"Failed to process video for media_id {media_id}: {e}")
+        print(f"{datetime.now()}: Failed to process video for media_id {media_id}: {e}")
 
     finally:
         # Clean up the temporary local files
@@ -242,7 +242,7 @@ async def websocket_chat_endpoint(
 
     except Exception as e:
         with open(logs_manager.logs_file, 'a') as  file:
-            print(f"Error in chat websocket for room {room_name}: {e}", file=file)
+            print(f"{datetime.now()}: Error in chat websocket for room {room_name}: {e}", file=file)
         manager.disconnect_from_room(room_name, websocket)
         await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
 
@@ -640,7 +640,7 @@ def delete_media_by_user(
 
     except Exception as e:
         with open(logs_manager.logs_file, 'a') as file:
-            print(f"ERROR during media deletion: {e}")
+            print(f"{datetime.now()}: ERROR during media deletion: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not delete the media item due to a server error.")
 
@@ -895,7 +895,7 @@ def delete_media_by_admin(
         oss_manager.delete_file_from_oss(media.media_url)
     except Exception as e:
         with open(logs_manager.logs_file, "a") as file:
-            print(f"ERROR during admin media deletion: {e}")
+            print(f"{datetime.now()}: ERROR during admin media deletion: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not delete the media item due to a server error.")
 
