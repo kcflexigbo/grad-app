@@ -3,7 +3,7 @@ import type { Message, Conversation } from '../../types/chat';
 import { useAuth } from '../../hooks/useAuth';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 
 interface ChatWindowProps {
     conversation: Conversation;
@@ -12,6 +12,7 @@ interface ChatWindowProps {
     isLoadingMessages: boolean;
     hasMoreMessages: boolean;
     onLoadMoreMessages: () => void;
+    onGoBack: () => void;
 }
 
 export const ChatWindow = ({
@@ -20,7 +21,8 @@ export const ChatWindow = ({
     onSendMessage,
     isLoadingMessages,
     hasMoreMessages,
-    onLoadMoreMessages
+    onLoadMoreMessages,
+    onGoBack
 }: ChatWindowProps) => {
     const { user: currentUser } = useAuth();
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -59,9 +61,13 @@ export const ChatWindow = ({
 
 
     return (
-        <div className="flex flex-col h-full bg-white border-l">
+        <div className="flex flex-col h-full bg-white md:border-l">
             {/* Header */}
             <header className="p-4 border-b flex items-center gap-3">
+                {/* Back button for mobile view */}
+                <button onClick={onGoBack} className="md:hidden p-2 -ml-2 text-gray-600 hover:text-gray-800" aria-label="Back to conversations">
+                    <ArrowLeft size={20} />
+                </button>
                 <img
                     src={otherParticipant?.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'}
                     alt={otherParticipant?.username}

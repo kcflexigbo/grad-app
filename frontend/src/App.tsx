@@ -63,6 +63,7 @@ const AppLayout = () => {
 
     useEffect(() => {
         if (lastMessage) {
+            // Invalidate notifications to update the count and list immediately
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
 
             if (lastMessage.type === 'chat_message') {
@@ -77,7 +78,12 @@ const AppLayout = () => {
                     ),
                     { icon: '💬' }
                 );
+                // Invalidate conversations to update the sidebar list
                 queryClient.invalidateQueries({ queryKey: ['conversations'] });
+                // Invalidate the specific message query to ensure the chat is up-to-date when opened
+                if (lastMessage.related_entity_id) {
+                     queryClient.invalidateQueries({ queryKey: ['messages', lastMessage.related_entity_id] });
+                }
             }
 
         }
