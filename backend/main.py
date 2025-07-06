@@ -19,6 +19,14 @@ import json
 
 import crud, models, schemas, security, oss_manager, database_manager, email_manager, logs_manager
 from connection_manager import manager
+import logging
+
+honeypot_logger = logging.getLogger('honeypot')
+honeypot_logger.setLevel(logging.INFO)
+handler = logging.FileHandler('logs/honeypot.log')
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+handler.setFormatter(formatter)
+honeypot_logger.addHandler(handler)
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -83,32 +91,15 @@ def get_real_ip(request: Request) -> str:
         return request.headers["x-forwarded-for"].split(',')[0].strip()
     return request.client.host
 
-# Middleware to check and ban malicious IPs
 @app.middleware("http")
 async def ban_malicious_ips(request: Request, call_next):
     path = request.url.path
 
     if path in MALICIOUS_ROUTES:
-        try:
-            attacker_ip = get_real_ip(request)
-        except Exception as e:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Not Found"},
-            )
+        attacker_ip = get_real_ip(request)
 
-        print(f"🚨 Blocking attacker IP: {attacker_ip} for accessing {path}")
-        try:
-            subprocess.run(["iptables", "-A", "INPUT", "-s", attacker_ip, "-j", "DROP"], check=True)
-        except subprocess.CalledProcessError as e:
-            with open(logs_manager.logs_file, "a") as file:
-                print(f"{datetime.now()}: Failed to ban IP: {e}", file)
-        subprocess.run("iptables-save > /etc/iptables/rules.v4", shell=True)
+        honeypot_logger.info(f"[honeypot-ban] Banning IP: {attacker_ip} for accessing {path}")
 
-        with open("logs/honeypot.log", "a") as f:
-            f.write(f"Blocked {attacker_ip} for accessing {path}\n")
-
-        # Return fake error to avoid suspicion
         return JSONResponse(
             status_code=404,
             content={"error": "Not Found"},
