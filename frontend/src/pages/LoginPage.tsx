@@ -48,7 +48,7 @@ export const LoginPage = () => {
                         />
                         <div className="absolute inset-0 bg-brand-dark bg-opacity-50 flex items-end p-8">
                             <h1 className="text-white text-4xl font-serif font-bold leading-tight">
-                                Cherish Every<br/>Moment.
+                                Relive Your<br/>Achievements.
                             </h1>
                         </div>
                     </div>
@@ -57,7 +57,7 @@ export const LoginPage = () => {
                     <div className="w-full md:w-1/2 bg-brand-light p-8 sm:p-12 flex flex-col justify-center">
                         <div className="w-full max-w-md mx-auto">
                             <Link to="/" className="text-2xl font-serif text-brand-dark hover:text-brand-accent transition-colors mb-6 block">
-                               Graduation Gallery
+                               RateMyPix
                             </Link>
 
                             <h2 className="text-3xl font-bold text-brand-dark mb-2">Welcome Back</h2>
