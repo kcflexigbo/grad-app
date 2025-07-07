@@ -42,7 +42,7 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                         <Link to="/" className="flex items-center gap-2 group">
                              <img src="/logo.png" alt="Logo" className="h-8 w-8" />
                              <span className="hidden sm:block text-xl font-serif text-brand-dark group-hover:text-brand-accent transition-colors whitespace-nowrap">
-                                Graduation Gallery
+                                RateMyPix
                             </span>
                         </Link>
                         <Link to="/leaderboard" className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-brand-accent transition-colors" title="Leaderboard">

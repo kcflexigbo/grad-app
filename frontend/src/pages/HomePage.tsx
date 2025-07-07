@@ -70,16 +70,16 @@ export const HomePage = () => {
 
     return (
         <>
-            <PageHelmet title={"Home Page"} description={"Explore a collection of media from a milestone achievement."}/>
+            <PageHelmet title={"Home Page"} description={"Explore moments from life's greatest milestones. Share your achievements and celebrate with others."}/>
             <div className="space-y-12">
                 <header className="text-center py-10 md:py-16 border-b border-gray-200/80">
-                    <h1 className="text-5xl md:text-6xl font-bold tracking-tight">The Graduation Gallery</h1>
-                    <p className="text-lg text-brand-text mt-4 max-w-2xl mx-auto">A shared space to discover, celebrate, and cherish the moments from a milestone achievement.</p>
+                    <h1 className="text-5xl md:text-6xl font-bold tracking-tight">Frame Your Moments</h1>
+                    <p className="text-lg text-brand-text mt-4 max-w-2xl mx-auto">A shared space to discover, celebrate, and cherish life's special occasions and personal achievements.</p>
                 </header>
 
                 <main className="space-y-8">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                         <h2 className="text-2xl font-semibold">Explore Media</h2>
+                         <h2 className="text-2xl font-semibold">Explore Moments</h2>
                          <div className="flex items-center justify-center gap-2 p-1 bg-gray-100 rounded-full">
                             <button onClick={() => handleSortChange('newest')} className={getSortButtonClass('newest')}>Most Recent</button>
                             <button onClick={() => handleSortChange('popular')} className={getSortButtonClass('popular')}>Most Popular</button>
