@@ -6,11 +6,11 @@ import type { Media } from '../types/media';
 interface MediaCardProps {
     media: Media;
     onRemoveFromAlbum?: (mediaId: number) => void;
+    loadingStrategy?: 'eager' | 'lazy';
 }
 
-export const MediaCard = ({ media, onRemoveFromAlbum }: MediaCardProps) => {
-    // The handler for removing an item from an album.
-    // It prevents the link from being followed when the 'X' is clicked.
+export const MediaCard = ({ media, onRemoveFromAlbum, loadingStrategy = 'lazy' }
+                          : MediaCardProps) => {
     const handleRemoveClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -19,15 +19,23 @@ export const MediaCard = ({ media, onRemoveFromAlbum }: MediaCardProps) => {
         }
     };
 
+    const getSrcSet = (baseUrl: string) => {
+        const widths = [400, 600, 800, 1200, 1600];
+
+        // Chain commands: 1. Resize, 2. Auto-format to WebP, 3. Set quality to 80
+        const processCommands = "image/resize,w_{w}/format,webp/quality,q_80";
+
+        return widths
+            .map(w => `${baseUrl}?x-oss-process=${processCommands.replace('{w}', String(w))} ${w}w`)
+            .join(', ');
+    }
+
     return (
         <div className="relative group break-inside-avoid">
-            {/* The main link still points to a detail page.
-                The route can be updated later in App.tsx if desired. */}
             <Link
                 to={`/media/${media.id}`}
                 className="block overflow-hidden rounded-lg shadow-sm hover:shadow-xl transition-shadow duration-300"
             >
-                {/* --- CORE CHANGE: Render an <img /> or <video /> based on media_type --- */}
                 {media.media_type === 'video' ? (
                     <video
                         src={media.media_url}
@@ -35,25 +43,26 @@ export const MediaCard = ({ media, onRemoveFromAlbum }: MediaCardProps) => {
                         autoPlay
                         loop
                         muted
-                        playsInline // Essential for good UX on mobile browsers
+                        playsInline
                     />
                 ) : (
                     <img
                         src={media.media_url}
+                        srcSet={getSrcSet(media.media_url)}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                         alt={media.caption || `A media item by ${media.owner.username}`}
                         className="w-full h-auto object-cover"
-                        loading="lazy"
+                        loading={loadingStrategy}
+                        fetchPriority={loadingStrategy === 'eager' ? 'high' : 'auto'}
                     />
                 )}
 
-                {/* --- NEW FEATURE: A visual indicator for video content --- */}
                 {media.media_type === 'video' && (
                     <div className="absolute top-3 right-3 z-10 p-1 bg-black/40 backdrop-blur-sm rounded-full text-white">
                         <PlayCircle size={20} />
                     </div>
                 )}
 
-                {/* The hover overlay logic remains the same, just using the `media` prop */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 text-white">
                     {/* Owner Information */}
                     <div className="flex items-center gap-2 transform -translate-y-4 group-hover:translate-y-0 transition-transform duration-300 ease-in-out">

@@ -65,14 +65,21 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                     <div className="flex items-center shrink-0 space-x-2 sm:space-x-3">
                         {isLoggedIn && user ? (
                             <>
-                                <button className="flex items-center gap-1.5 bg-brand-accent text-white px-3 py-2 sm:px-4 rounded-md hover:bg-brand-accent-hover transition-colors font-semibold" onClick={onUploadClick}>
+                                <button
+                                        aria-label={"Upload Button"}
+                                        className="flex items-center gap-1.5 bg-brand-accent text-white px-3 py-2 sm:px-4 rounded-md hover:bg-brand-accent-hover transition-colors font-semibold"
+                                        onClick={onUploadClick}
+                                >
                                     <Upload size={18} />
                                     <span className="hidden sm:inline text-sm">Upload</span>
                                 </button>
                                 <Link to="/chat" className="p-2 rounded-full hover:bg-gray-100" title="Chat">
                                     <MessageSquare size={20} className="text-gray-600" />
                                 </Link>
-                                <Link to="/notifications" className="relative p-2 rounded-full hover:bg-gray-100">
+                                <Link
+                                    aria-label={"Notifications Button"}
+                                    to="/notifications"
+                                    className="relative p-2 rounded-full hover:bg-gray-100">
                                     <Bell size={20} className="text-gray-600" />
                                     {notificationCount > 0 && (
                                         <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center border-2 border-white">

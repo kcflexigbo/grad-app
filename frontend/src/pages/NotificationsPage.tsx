@@ -135,3 +135,5 @@ export const NotificationsPage = () => {
         </>
     );
 };
+
+export default NotificationsPage;

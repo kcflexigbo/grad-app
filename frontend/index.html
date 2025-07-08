@@ -5,11 +5,39 @@
     <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="RateMyPic - Share, rate, and discover photos with our community of photographers and enthusiasts">
-    <title>RateMyPic</title>
+    <title>RateMyPix</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://grad-gallery.oss-cn-nanjing.aliyuncs.com">
+    <script>
+      (async () => {
+        try {
+          // Fetch the first image from your API
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://api.ratemygradpix.xin'}/media?sort_by=newest&limit=1`);
+          if (!response.ok) return;
+
+          const data = await response.json();
+          if (!data || data.length === 0 || !data[0].media_url) return;
+
+          const lcpImageUrl = data[0].media_url;
+
+          // Create the preload link element
+          const preloadLink = document.createElement('link');
+          preloadLink.rel = 'preload';
+          preloadLink.as = 'image';
+          // Use srcset to preload the correct size
+          preloadLink.imageSrcset = [400, 600, 800, 1200, 1600]
+            .map(w => `${lcpImageUrl}?x-oss-process=image/resize,w_${w} ${w}w`)
+            .join(', ');
+          // Add sizes attribute
+          preloadLink.imageSizes = '(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw';
+
+          // Append it to the head
+          document.head.appendChild(preloadLink);
+        } catch (e) {
+          console.error('LCP preload failed:', e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

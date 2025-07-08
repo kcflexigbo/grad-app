@@ -320,3 +320,5 @@ export const MediaDetailPage = () => {
         </>
     );
 };
+
+export default MediaDetailPage;

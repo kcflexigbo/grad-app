@@ -24,11 +24,12 @@ export const MediaGrid = ({ mediaItems, onRemoveFromAlbum }: MediaGridProps) => 
             columnClassName="my-masonry-grid_column"
         >
             {/* Map over the 'mediaItems' prop */}
-            {mediaItems.map((media) => (
+            {mediaItems.map((media, index) => (
                 <MediaCard
                     key={media.id}
                     media={media} // Pass the 'media' object to MediaCard
                     onRemoveFromAlbum={onRemoveFromAlbum}
+                    loadingStrategy={index < 4 ? 'eager' : 'lazy'}
                 />
             ))}
         </Masonry>
