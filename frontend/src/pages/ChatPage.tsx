@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import {useEffect, useState} from 'react';
+import {useInfiniteQuery, useQuery, useQueryClient} from '@tanstack/react-query';
+import {useSearchParams} from 'react-router-dom';
 
 import apiService from '../api/apiService';
-import { useAuth } from '../hooks/useAuth';
-import { useWebSocket } from '../hooks/useWebSocket';
-import { WS_URL } from '../api/config';
+import {useAuth} from '../hooks/useAuth';
+import {useWebSocket} from '../hooks/useWebSocket';
+import {WS_URL} from '../api/config';
 
-import { ChatLayout } from '../components/chat/ChatLayout';
-import { PageHelmet } from '../components/layout/PageHelmet';
+import {ChatLayout} from '../components/chat/ChatLayout';
+import {PageHelmet} from '../components/layout/PageHelmet';
 
-import type { Conversation, Message } from '../types/chat';
+import type {Conversation, Message} from '../types/chat';
 
 const MESSAGES_PAGE_SIZE = 50;
 
@@ -86,7 +86,7 @@ export const ChatPage = () => {
                 }
 
                 // Create a deep copy to ensure immutability
-                const newData = {
+                return {
                     ...oldData,
                     pages: oldData.pages.map((page: any, index: number) => {
                         // Only add the new message to the very last page
@@ -99,7 +99,6 @@ export const ChatPage = () => {
                         return page;
                     }),
                 };
-                return newData;
             });
 
              // Also update the last_message in the conversations list for the sidebar
