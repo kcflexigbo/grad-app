@@ -5,7 +5,7 @@ import apiService from '../api/apiService';
 import { LogIn } from 'lucide-react';
 import {PageHelmet} from "../components/layout/PageHelmet.tsx";
 
-export const LoginPage = () => {
+const LoginPage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -115,3 +115,5 @@ export const LoginPage = () => {
         </>
     );
 };
+
+export default LoginPage;

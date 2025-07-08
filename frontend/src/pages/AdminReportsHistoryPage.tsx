@@ -112,3 +112,5 @@ export const AdminReportsHistoryPage = () => {
         </div>
     );
 };
+
+export default AdminReportsHistoryPage;

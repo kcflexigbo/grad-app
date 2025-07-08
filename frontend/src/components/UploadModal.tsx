@@ -66,13 +66,12 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
     };
 
     const compressImage = async (id: string, file: File) => {
-        const options = { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true };
+        const options = { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/webp' };
         try {
             const compressed = await imageCompression(file, options);
             setFiles(prev => prev.map(fp => fp.id === id ? { ...fp, compressedFile: compressed, isCompressing: false } : fp));
         } catch (error) {
             console.error("Compression failed:", error);
-            // Handle error, maybe mark the file as failed
             setFiles(prev => prev.map(fp => fp.id === id ? { ...fp, isCompressing: false } : fp));
         }
     };
@@ -100,7 +99,7 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
             // Use compressed file for media, original for videos
             const fileToUpload = fp.file.type.startsWith('image/') ? fp.compressedFile : fp.file;
             if (fileToUpload) {
-                formData.append('files', fileToUpload, fp.file.name);
+                formData.append('files', fileToUpload, `${fp.file.name.split('.')[0]}.webp`);
             }
         });
         formData.append('caption', caption);

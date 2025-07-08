@@ -25,7 +25,7 @@ const fetchMedia = async ({ pageParam = 0, sortBy }: { pageParam?: number, sortB
     };
 };
 
-export const HomePage = () => {
+const HomePage = () => {
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const { ref, inView } = useInView({ threshold: 0.5 });
 
@@ -120,3 +120,5 @@ export const HomePage = () => {
         </>
     );
 };
+
+export default HomePage;

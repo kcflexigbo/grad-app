@@ -81,3 +81,5 @@ export const FollowListPage = () => {
         </div>
     );
 };
+
+export default FollowListPage;

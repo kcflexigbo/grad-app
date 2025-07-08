@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Link } from 'react-router-dom';
 
 // Providers and Hooks
@@ -18,22 +18,22 @@ import { UploadModal } from './components/UploadModal';
 import apiService from './api/apiService';
 
 // Page Components
-import { HomePage } from './pages/HomePage';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { MediaDetailPage } from './pages/MediaDetailPage.tsx';
-import { ProfilePage } from './pages/ProfilePage';
-import { SearchPage } from './pages/SearchPage';
-import { AlbumDetailPage } from './pages/AlbumDetailPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
-import { LeaderboardPage } from "./pages/LeaderboardPage.tsx";
-import { FollowListPage } from './pages/FollowListPage.tsx';
-import { AdminReportsHistoryPage } from './pages/AdminReportsHistoryPage.tsx';
-import {ForgotPasswordPage} from "./pages/ForgotPasswordPage.tsx";
-import {ResetPasswordPage} from "./pages/ResetPasswordPage.tsx";
-import {ChatPage} from "./pages/ChatPage.tsx";
+const HomePage = lazy(() => import('./pages/HomePage.tsx'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const MediaDetailPage = lazy(() => import('./pages/MediaDetailPage.tsx'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SearchPage = lazy(() => import('./pages/SearchPage'));
+const AlbumDetailPage = lazy(() => import('./pages/AlbumDetailPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage.tsx'));
+const FollowListPage = lazy(() => import('./pages/FollowListPage.tsx'));
+const AdminReportsHistoryPage = lazy(() => import('./pages/AdminReportsHistoryPage.tsx'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.tsx'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.tsx'));
+const ChatPage = lazy(() => import('./pages/ChatPage.tsx'));
 import toast, {Toaster} from "react-hot-toast";
 
 const queryClient = new QueryClient();
@@ -151,29 +151,31 @@ function App() {
                         },
                       }}
                     />
-                    <Routes>
-                        <Route path="/" element={<AppLayout />}>
-                            <Route index element={<HomePage />} />
-                            <Route path="media/:id" element={<MediaDetailPage />} />
-                            <Route path="profile/:username" element={<ProfilePage />} />
-                            <Route path="search" element={<SearchPage />} />
-                            <Route path="album/:id" element={<AlbumDetailPage />} />
-                            <Route path="settings" element={<SettingsPage />} />
-                            <Route path="notifications" element={<NotificationsPage />} />
-                            <Route path="chat" element={<ChatPage />} />
-                            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                            <Route path="/admin/reports/history" element={<AdminReportsHistoryPage />} />
-                            <Route path="/leaderboard" element={<LeaderboardPage />} />
-                            <Route path="/profile/:username/:mode" element={<FollowListPage />} />
-                        </Route>
+                    <Suspense fallback={<div className="flex justify-center items-center h-screen">Loading...</div>}>
+                        <Routes>
+                            <Route path="/" element={<AppLayout />}>
+                                <Route index element={<HomePage />} />
+                                <Route path="media/:id" element={<MediaDetailPage />} />
+                                <Route path="profile/:username" element={<ProfilePage />} />
+                                <Route path="search" element={<SearchPage />} />
+                                <Route path="album/:id" element={<AlbumDetailPage />} />
+                                <Route path="settings" element={<SettingsPage />} />
+                                <Route path="notifications" element={<NotificationsPage />} />
+                                <Route path="chat" element={<ChatPage />} />
+                                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                                <Route path="/admin/reports/history" element={<AdminReportsHistoryPage />} />
+                                <Route path="/leaderboard" element={<LeaderboardPage />} />
+                                <Route path="/profile/:username/:mode" element={<FollowListPage />} />
+                            </Route>
 
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/register" element={<RegisterPage />} />
-                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                        <Route path="/reset-password" element={<ResetPasswordPage />} />
+                            <Route path="/login" element={<LoginPage />} />
+                            <Route path="/register" element={<RegisterPage />} />
+                            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-                        <Route path="*" element={<NotFoundPage />} />
-                    </Routes>
+                            <Route path="*" element={<NotFoundPage />} />
+                        </Routes>
+                    </Suspense>
                 </AuthProvider>
             </Router>
         </QueryClientProvider>
