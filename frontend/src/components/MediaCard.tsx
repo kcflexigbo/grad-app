@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, PlayCircle, X } from 'lucide-react';
 import type { Media } from '../types/media';
+import {memo} from "react";
 
 // The props interface is updated to use the new Media type
 interface MediaCardProps {
@@ -9,7 +10,7 @@ interface MediaCardProps {
     loadingStrategy?: 'eager' | 'lazy';
 }
 
-export const MediaCard = ({ media, onRemoveFromAlbum, loadingStrategy = 'lazy' }
+const MediaCardComponent = ({ media, onRemoveFromAlbum, loadingStrategy = 'lazy' }
                           : MediaCardProps) => {
     const handleRemoveClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -101,3 +102,5 @@ export const MediaCard = ({ media, onRemoveFromAlbum, loadingStrategy = 'lazy' }
         </div>
     );
 };
+
+export const MediaCard = memo(MediaCardComponent);

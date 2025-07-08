@@ -47,6 +47,7 @@ const AppLayout = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const queryClient = useQueryClient();
     const { isLoggedIn } = useAuth();
+    const [isSocketActive, setIsSocketActive] = useState(true);
 
     const { data: notificationsResponse } = useQuery({
         queryKey: ['notifications'],
@@ -58,8 +59,20 @@ const AppLayout = () => {
     const unreadCount = notificationsResponse?.data?.filter(n => !n.is_read).length ?? 0;
 
     const token = localStorage.getItem('accessToken');
-    const wsUrl = isLoggedIn ? `${WS_URL}/ws/notifications?token=${token}` : null;
+    const wsUrl = isLoggedIn && isSocketActive ? `${WS_URL}/ws/notifications?token=${token}` : null;
     const { lastMessage } = useWebSocket<NotificationType>(wsUrl);
+
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            setIsSocketActive(document.visibilityState === 'visible');
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
 
     useEffect(() => {
         if (lastMessage) {

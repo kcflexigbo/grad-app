@@ -271,7 +271,7 @@ export const ProfilePage = () => {
             <ProfilePictureModal
                 isOpen={isPfpModalOpen}
                 onClose={() => setIsPfpModalOpen(false)}
-                imageUrl={profile.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'}
+                imageUrl={profile.profile_picture_url || '/default_avatar.png'}
                 isOwnProfile={isOwnProfile}
                 onUploadSuccess={handleUploadSuccess}
             />
