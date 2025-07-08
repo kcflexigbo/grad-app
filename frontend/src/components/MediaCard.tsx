@@ -69,7 +69,7 @@ const MediaCardComponent = ({ media, onRemoveFromAlbum, loadingStrategy = 'lazy'
                     {/* Owner Information */}
                     <div className="flex items-center gap-2 transform -translate-y-4 group-hover:translate-y-0 transition-transform duration-300 ease-in-out">
                         <img
-                            src={media.owner.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'}
+                            src={media.owner.profile_picture_url || '/default_avatar.png'}
                             alt={media.owner.username}
                             className="w-8 h-8 rounded-full object-cover border-2 border-white/80"
                         />

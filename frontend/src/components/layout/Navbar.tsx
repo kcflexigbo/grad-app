@@ -90,7 +90,11 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
 
                                 <div className="relative" ref={dropdownRef}>
                                     <button onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                                        <img src={user.profile_picture_url || '/default_avatar.png'} alt={`${user.username}'s profile`} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-transparent hover:border-brand-accent transition-all" />
+                                        <img
+                                            src={user.profile_picture_url || '/default_avatar.png'}
+                                            alt={`${user.username}'s profile`}
+                                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-transparent hover:border-brand-accent transition-all"
+                                        />
                                     </button>
 
                                     {isDropdownOpen && (
@@ -98,7 +102,15 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
                                             <Link to={`/profile/${user.username}`} onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-brand-text hover:bg-gray-100"><UserIcon size={16} /><span>My Profile</span></Link>
                                             <Link to="/settings" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-brand-text hover:bg-gray-100"><Settings size={16} /><span>Settings</span></Link>
                                             <div className="border-t border-gray-100 my-1"></div>
-                                            <button onClick={() => { logout(); setIsDropdownOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><LogOut size={16} /><span>Logout</span></button>
+                                            <button
+                                                onClick={() => {
+                                                    logout();
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><LogOut size={16}
+                                            />
+                                                <span>Logout</span>
+                                            </button>
                                         </div>
                                     )}
                                 </div>
