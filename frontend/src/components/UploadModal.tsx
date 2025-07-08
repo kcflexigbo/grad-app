@@ -196,3 +196,5 @@ export const UploadModal = ({ isOpen, onClose, onUploadSuccess }: UploadModalPro
         </div>
     );
 };
+
+export default UploadModal;

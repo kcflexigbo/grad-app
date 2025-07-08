@@ -52,6 +52,7 @@ export const MediaCard = ({ media, onRemoveFromAlbum, loadingStrategy = 'lazy' }
                         sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                         alt={media.caption || `A media item by ${media.owner.username}`}
                         className="w-full h-auto object-cover"
+                        style={{ aspectRatio: '4 / 3' }}
                         loading={loadingStrategy}
                         fetchPriority={loadingStrategy === 'eager' ? 'high' : 'auto'}
                     />

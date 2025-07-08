@@ -167,6 +167,7 @@ export const MediaDetailPage = () => {
                             src={media.media_url}
                             alt={media.caption || `Media by ${media.owner.username}`}
                             className="max-w-full max-h-[80vh] object-contain"
+                            style={{ aspectRatio: '16 / 9' }}
                         />
                     )}
                 </div>
@@ -195,7 +196,10 @@ export const MediaDetailPage = () => {
 
                     <div className="flex justify-between items-start">
                         <Link to={`/profile/${media.owner.username}`} className="flex items-center gap-3 group">
-                            <img src={media.owner.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'} alt={media.owner.username} className="w-12 h-12 rounded-full object-cover"/>
+                            <img
+                                src={media.owner.profile_picture_url || 'https://s3.amazonaws.com/37assets/svn/765-default-avatar.png'} alt={media.owner.username}
+                                className="w-12 h-12 rounded-full object-cover"
+                            />
                             <div>
                                 <h2 className="font-bold text-lg text-gray-800 group-hover:underline">{media.owner.username}</h2>
                                 <p className="text-sm text-gray-500">Posted on {new Date(media.created_at).toLocaleDateString()}</p>

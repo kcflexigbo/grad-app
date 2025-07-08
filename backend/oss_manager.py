@@ -47,7 +47,8 @@ def upload_file_to_oss(file: UploadFile, object_name: str) -> str:
             object_name,
             ExtraArgs={
                 'ACL': 'public-read',
-                'ContentType': file.content_type
+                'ContentType': file.content_type,
+                'CacheControl': 'public, max-age=31536000'
             }
         )
     except Exception as e:
@@ -68,7 +69,8 @@ def upload_local_file_to_oss(local_file_path: str, object_name: str, content_typ
             object_name,
             ExtraArgs={
                 'ACL': 'public-read',
-                'ContentType': content_type
+                'ContentType': content_type,
+                'CacheControl': 'public, max-age=31536000'
             }
         )
     except Exception as e:

@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 
-// --- NEW, MORE ROBUST METHOD ---
-// Use a plain object with 'as const' to get strong types without a TypeScript enum.
 const ReadyState = {
     Connecting: 0,
     Open: 1,
@@ -12,7 +10,6 @@ const ReadyState = {
 
 type ReadyState = typeof ReadyState[keyof typeof ReadyState];
 
-// The hook's return type now uses our new erasable type.
 interface WebSocketHook<T> {
     lastMessage: T | null;
     readyState: ReadyState;
@@ -21,7 +18,6 @@ interface WebSocketHook<T> {
 
 export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
     const [lastMessage, setLastMessage] = useState<T | null>(null);
-    // The initial state now uses the object property, which is type-safe.
     const [readyState, setReadyState] = useState<ReadyState>(ReadyState.Closed);
     const ws = useRef<WebSocket | null>(null);
 
@@ -35,7 +31,6 @@ export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
         setReadyState(ReadyState.Connecting);
 
         socket.onopen = () => {
-            // console.log('WebSocket connection established.');
             setReadyState(ReadyState.Open);
         };
 
@@ -49,7 +44,6 @@ export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
         };
 
         socket.onclose = () => {
-            // console.log('WebSocket connection closed.');
             setReadyState(ReadyState.Closed);
             ws.current = null;
         };
@@ -60,7 +54,6 @@ export const useWebSocket = <T,>(url: string | null): WebSocketHook<T> => {
         };
 
         return () => {
-            // We now check against the object's value directly.
             if (socket.readyState === ReadyState.Open) {
                 socket.close();
             }

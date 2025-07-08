@@ -12,9 +12,9 @@ import { WS_URL } from './api/config';
 import type { Notification as NotificationType } from './types/notification';
 
 // Core Layout Components
-import { Navbar } from './components/layout/Navbar';
-import { Footer } from './components/layout/Footer';
-import { UploadModal } from './components/UploadModal';
+const Navbar = lazy(() => import('./components/layout/Navbar'));
+const Footer = lazy(() => import('./components/layout/Footer'));
+const UploadModal = lazy(() => import('./components/UploadModal'));
 import apiService from './api/apiService';
 
 // Page Components

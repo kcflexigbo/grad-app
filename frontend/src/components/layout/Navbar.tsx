@@ -115,3 +115,5 @@ export const Navbar = ({ onUploadClick, notificationCount }: NavbarProps) => {
         </header>
     );
 };
+
+export default Navbar;
