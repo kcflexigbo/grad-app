@@ -30,7 +30,7 @@ honeypot_logger.addHandler(handler)
 
 limiter = Limiter(key_func=get_remote_address)
 
-models.Base.metadata.create_all(bind=database_manager.engine)
+# models.Base.metadata.create_all(bind=database_manager.engine)
 
 app = FastAPI(title="Graduation Social Gallery API")
 
@@ -100,7 +100,9 @@ MALICIOUS_ROUTE_PATTERNS = [
     re.compile(r"/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin\.php", re.IGNORECASE), # Known PHPUnit RCE
 ]
 
-KNOWN_SAFE_PATH_PATTERNS = []
+KNOWN_SAFE_PATH_PATTERNS = [
+    re.compile(r"/admin/media($|/)", re.IGNORECASE),
+]
 
 # MALICIOUS_ROUTES = {
 #     "/.env",
@@ -130,9 +132,9 @@ def get_real_ip(request: Request) -> str:
 async def ban_malicious_ips(request: Request, call_next):
     path = request.url.path
 
-    # for safe_pattern in KNOWN_SAFE_PATH_PATTERNS:
-    #     if safe_pattern.search(path):
-    #         return await call_next(request)
+    for safe_pattern in KNOWN_SAFE_PATH_PATTERNS:
+        if safe_pattern.search(path):
+            return await call_next(request)
 
     for pattern in MALICIOUS_ROUTE_PATTERNS:
         if pattern.search(path):
