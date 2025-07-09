@@ -18,26 +18,12 @@ SQLALCHEMY_DATABASE_URL = (
     f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-# engine = create_engine(
-#     SQLALCHEMY_DATABASE_URL,
-#     pool_recycle=280,  # Slightly less than the typical 5-minute (300s) timeout
-#     pool_pre_ping=True, # Checks if the connection is alive before using it, crucial for this error
-#     pool_size=2,       # The number of connections to keep open in the pool
-#     max_overflow=3    # The number of extra connections that can be opened
-# )
-
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    pool_recycle=280,
-    pool_pre_ping=True,
-    pool_size=4,
-    max_overflow=4,
-    connect_args={
-        "keepalives_idle": 60,
-        "keepalives_interval": 10,
-        "keepalives_count": 5
-    },
-    use_native_hstore=False
+    pool_recycle=280,  # Slightly less than the typical 5-minute (300s) timeout
+    pool_pre_ping=True, # Checks if the connection is alive before using it, crucial for this error
+    pool_size=4,       # The number of connections to keep open in the pool
+    max_overflow=4    # The number of extra connections that can be opened
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
