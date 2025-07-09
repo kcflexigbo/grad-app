@@ -12,8 +12,11 @@
     <script>
       (async () => {
         try {
+
+          const apiUrl = '%VITE_API_URL%' || 'http://127.0.0.1:8000';
+
           // Fetch the first image from your API
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://api.ratemygradpix.xin'}/media?sort_by=newest&limit=1`);
+          const response = await fetch(`${apiUrl}/media?sort_by=newest&limit=1`);
           if (!response.ok) return;
 
           const data = await response.json();
@@ -21,18 +24,18 @@
 
           const lcpImageUrl = data[0].media_url;
 
-          // Create the preload link element
+          const processCommands = "image/resize,w_{w}/format,webp/quality,q_80";
+
           const preloadLink = document.createElement('link');
           preloadLink.rel = 'preload';
           preloadLink.as = 'image';
-          // Use srcset to preload the correct size
-          preloadLink.imageSrcset = [400, 600, 800, 1200, 1600]
-            .map(w => `${lcpImageUrl}?x-oss-process=image/resize,w_${w} ${w}w`)
-            .join(', ');
-          // Add sizes attribute
-          preloadLink.imageSizes = '(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw';
 
-          // Append it to the head
+          preloadLink.imageSrcset = [400, 600, 800, 1200, 1600]
+            .map(w => `${lcpImageUrl}?x-oss-process=${processCommands.replace('{w}', String(w))} ${w}w`)
+            .join(', ');
+
+          preloadLink.imageSizes = '(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw';
+
           document.head.appendChild(preloadLink);
         } catch (e) {
           console.error('LCP preload failed:', e);

@@ -8,6 +8,3 @@ for logs_file in logs_files:
         os.makedirs(os.path.dirname(logs_file), exist_ok=True)
         with open(logs_file, "w+") as f:
             pass
-
-    with open(logs_file, "a+") as f:
-        f.write(f"\n\n\n\n----{datetime.now()} ----\n")
