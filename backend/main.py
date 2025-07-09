@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 import subprocess
 from database_manager import SessionLocal, get_db
 import json
-
+import re
 import crud, models, schemas, security, oss_manager, database_manager, email_manager, logs_manager
 from connection_manager import manager
 import logging
@@ -67,43 +67,86 @@ origins = [
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"])
 
-MALICIOUS_ROUTES = {
-    "/.env",
-        "/env.template",
-        "/env/test.ini",
-        "/dev-env/.env",
-        "/helpers/.env",
-        "/data/env.txt",
-        "/current/.env",
-        "/dev"
-        "/.git/config",
-        "/admin",
-        "/wp-admin",
-        "/cgi-bin/luci",
-        "/aws-secrets.yaml",
-        "/phpinfo",
-        "/Autodiscover/Autodiscover.xml",
+MALICIOUS_ROUTE_PATTERNS = [
+    re.compile(r"/\.env($|/)", re.IGNORECASE),         #  .env file
+    re.compile(r"/env($|/)", re.IGNORECASE), # Exact env.template file
+    re.compile(r"/dev-env($|/)", re.IGNORECASE), # Exact dev-env/.env
+    re.compile(r"/helpers($|/)", re.IGNORECASE), # Exact helpers/.env
+    re.compile(r"/data($|/)", re.IGNORECASE), # Exact data/env.txt
+    re.compile(r"/current($|/)", re.IGNORECASE), # Exact current/.env
+    re.compile(r"/dev($|/)", re.IGNORECASE),      # /dev or /dev/something
+    re.compile(r"/\.git($|/)", re.IGNORECASE),  # .git/config
+    re.compile(r"/admin($|/)", re.IGNORECASE),    # /admin or /admin/something
+    re.compile(r"/wp-admin($|/)", re.IGNORECASE), # /wp-admin or /wp-admin/something
+    re.compile(r"/cgi-bin($|/)", re.IGNORECASE),  # cgi-bin/luci
+    re.compile(r"/aws-secrets\.yaml", re.IGNORECASE), # aws-secrets.yaml
+    re.compile(r"/phpinfo(\.php)?", re.IGNORECASE), # phpinfo or phpinfo.php
+    re.compile(r"/Autodiscover($|/)", re.IGNORECASE),  # Autodiscover or Autodiscover/...
 
-}
+    re.compile(r"/wp-login\.php", re.IGNORECASE),
+    re.compile(r"/test\.php", re.IGNORECASE),
+    re.compile(r"/config\.json", re.IGNORECASE),
+    re.compile(r"/backup(\.zip|\.sql|\.tar\.gz)?", re.IGNORECASE), # common backup files
+    re.compile(r"/db\.sql", re.IGNORECASE),
+    re.compile(r"/adminer(\.php)?", re.IGNORECASE), # Adminer database management tool
+    re.compile(r"/phpmyadmin($|/)", re.IGNORECASE), # phpMyAdmin
+    re.compile(r"/shell(\.php)?", re.IGNORECASE), # Common web shell names
+    re.compile(r"/vuln(\.php)?", re.IGNORECASE), # Common vulnerability test files
+    re.compile(r"/\.bash_history", re.IGNORECASE), # Bash history file
+    re.compile(r"/\.ssh/id_rsa", re.IGNORECASE), # SSH private key
+    re.compile(r"/crossdomain\.xml", re.IGNORECASE), # Flash cross-domain policy file
+    re.compile(r"/sitemap\.xml", re.IGNORECASE), # Often checked by scanners
+    re.compile(r"/robots\.txt", re.IGNORECASE), # Often checked by scanners
+    re.compile(r"/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin\.php", re.IGNORECASE), # Known PHPUnit RCE
+]
+
+KNOWN_SAFE_PATH_PATTERNS = []
+
+# MALICIOUS_ROUTES = {
+#     "/.env",
+#         "/env.template",
+#         "/env/test.ini",
+#         "/dev-env/.env",
+#         "/helpers/.env",
+#         "/data/env.txt",
+#         "/current/.env",
+#         "/dev"
+#         "/.git/config",
+#         "/admin",
+#         "/wp-admin",
+#         "/cgi-bin/luci",
+#         "/aws-secrets.yaml",
+#         "/phpinfo",
+#         "/Autodiscover/Autodiscover.xml",
+#
+# }
 
 def get_real_ip(request: Request) -> str:
     if "x-forwarded-for" in request.headers:
         return request.headers["x-forwarded-for"].split(',')[0].strip()
-    return request.client.host
+    return request.client.host if request.client else "Unknown"
 
 @app.middleware("http")
 async def ban_malicious_ips(request: Request, call_next):
     path = request.url.path
 
-    if path in MALICIOUS_ROUTES:
-        attacker_ip = get_real_ip(request)
+    # for safe_pattern in KNOWN_SAFE_PATH_PATTERNS:
+    #     if safe_pattern.search(path):
+    #         return await call_next(request)
 
-        honeypot_logger.info(f"[honeypot-ban] Banning IP: {attacker_ip} for accessing {path}")
+    for pattern in MALICIOUS_ROUTE_PATTERNS:
+        if pattern.search(path):
+            attacker_ip = get_real_ip(request)
 
-        return JSONResponse(
-            status_code=404,
-            content={"error": "Not Found"},
-        )
+            print(f"{attacker_ip} accessed {path}")
+
+            honeypot_logger.info(
+                f"[honeypot-ban] Banning IP: {attacker_ip} for accessing malicious path: {path} (matched regex: {pattern.pattern})")
+
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Not Found"},
+            )
 
     return await call_next(request)
 
