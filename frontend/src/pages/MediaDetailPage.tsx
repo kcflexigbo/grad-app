@@ -154,11 +154,11 @@ export const MediaDetailPage = () => {
         <>
             <PageHelmet title={pageTitle} description={pageDescription} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-                <div className="lg:col-span-2 bg-black rounded-lg flex items-center justify-center p-4">
+                <div className="lg:col-span-2 flex items-center justify-center">
                     {media.media_type === 'video' ? (
                         <video
                             src={media.media_url}
-                            className="max-w-full max-h-[80vh] object-contain"
+                            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-lg"
                             controls
                             autoPlay
                         />
@@ -166,8 +166,7 @@ export const MediaDetailPage = () => {
                         <img
                             src={media.media_url}
                             alt={media.caption || `Media by ${media.owner.username}`}
-                            className="max-w-full max-h-[80vh] object-contain"
-                            style={{ aspectRatio: '16 / 9' }}
+                            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-lg"
                         />
                     )}
                 </div>
