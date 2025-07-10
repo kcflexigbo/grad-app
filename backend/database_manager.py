@@ -22,8 +22,8 @@ engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     pool_recycle=280,  # Slightly less than the typical 5-minute (300s) timeout
     pool_pre_ping=True, # Checks if the connection is alive before using it, crucial for this error
-    pool_size=4,       # The number of connections to keep open in the pool
-    max_overflow=4    # The number of extra connections that can be opened
+    pool_size=2,       # The number of connections to keep open in the pool
+    max_overflow=1    # The number of extra connections that can be opened
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
