@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiService from '../api/apiService';
 import type { Notification } from '../types/notification';
-import { Heart, MessageCircle, UserPlus, Download, CheckCircle, MessageSquareText } from 'lucide-react';
+import {Heart, MessageCircle, UserPlus, Download, CheckCircle, MessageSquareText, CheckCheck} from 'lucide-react';
 import {PageHelmet} from "../components/layout/PageHelmet.tsx";
 import toast from "react-hot-toast";
 import type {JSX} from "react";
@@ -47,9 +47,22 @@ export const NotificationsPage = () => {
         },
     });
 
+    const markAllAsReadMutation = useMutation({
+        mutationFn: () => apiService.post('/notifications/read-all'),
+        onSuccess: () => {
+            toast.success("All notifications marked as read.");
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        },
+        onError: () => {
+            toast.error("Failed to mark all notifications as read.");
+        }
+    });
+
     if (isLoading) return (
             <div>Loading notifications...</div>
     );
+
+    const hasUnread = notifications?.some(n => !n.is_read);
 
     const renderNotificationContent = (notification: Notification) => {
         let text = '';
@@ -91,8 +104,18 @@ export const NotificationsPage = () => {
         <>
             <PageHelmet title={"Notifications"} description={"View your notifications and manage your account."} />
              <div className="max-w-4xl mx-auto space-y-8">
-                <header>
-                    <h1 className="text-4xl font-bold font-serif text-gray-800">Notifications</h1>
+                <header className="flex justify-between items-center">
+                     <h1 className="text-4xl font-bold font-serif text-gray-800">Notifications</h1>
+                    {hasUnread && (
+                         <button
+                            onClick={() => markAllAsReadMutation.mutate()}
+                            disabled={markAllAsReadMutation.isPending}
+                            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+                         >
+                            <CheckCheck size={18} />
+                            Mark All as Read
+                         </button>
+                    )}
                 </header>
 
                 <div className="space-y-3">

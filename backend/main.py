@@ -5,7 +5,7 @@ from datetime import timedelta, datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter, File, UploadFile, Form, Request, BackgroundTasks
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -64,7 +64,10 @@ origins = [
     "https://ratemypix.site",
     "https://www.ratemypix.site",
 ]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"],
+app.add_middleware(CORSMiddleware,
+                   allow_origins=origins,
+                   allow_credentials=True,
+                   allow_methods=["*"],
                    allow_headers=["*"])
 
 MALICIOUS_ROUTE_PATTERNS = [
@@ -224,10 +227,12 @@ def process_video_in_background(temp_path_str: str, media_id: int):
         db.close()
 
 @app.websocket("/ws/notifications")
-async def websocket_notifications_endpoint(websocket: WebSocket, token: str,
-                                           db: Session = Depends(database_manager.get_db)):
+async def websocket_notifications_endpoint(
+        websocket: WebSocket,
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user),
+):
     try:
-        current_user = security.get_current_user(token=token, db=db)
         await manager.connect(current_user.id, websocket)
         try:
             while True: await websocket.receive_text()
@@ -241,8 +246,8 @@ async def websocket_notifications_endpoint(websocket: WebSocket, token: str,
 async def websocket_chat_endpoint(
         websocket: WebSocket,
         conversation_id: int,
-        token: str,
-        db: Session = Depends(database_manager.get_db)
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
 ):
     """
     Handles real-time chat communication for a specific conversation.
@@ -251,11 +256,6 @@ async def websocket_chat_endpoint(
     3. Joins a dedicated WebSocket 'room' for the conversation.
     4. Listens for incoming messages, saves them to the DB, and broadcasts them to other room members.
     """
-    try:
-        current_user = security.get_current_user(token=token, db=db)
-    except HTTPException:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
 
     conversation = (
         db.query(models.Conversation)
@@ -269,10 +269,9 @@ async def websocket_chat_endpoint(
         return
 
     participant_ids = sorted([p.id for p in conversation.participants])
-    # For now, we assume 1-on-1 chat. For group chat, you might use the conversation ID itself.
     if conversation.type == 'one_to_one':
         room_name = f"chat-{participant_ids[0]}-{participant_ids[1]}"
-    else:  # Future-proofing for group chats
+    else:
         room_name = f"chat_group-{conversation.id}"
 
     await manager.connect_to_room(room_name, websocket)
@@ -371,10 +370,10 @@ def register_user(request: Request, user: schemas.UserCreate,
     return crud.create_user(db=db, user=user)
 
 
-@auth_router.post("/token", response_model=schemas.Token)
-@limiter.limit("15/minute")
+@auth_router.post("/token")
+# @limiter.limit("15/minute")
 def login_for_access_token(
-        request: Request,
+        response: Response,
         form_data: OAuth2PasswordRequestForm = Depends(),
         db: Session = Depends(database_manager.get_db)
 ):
@@ -389,7 +388,20 @@ def login_for_access_token(
     access_token = security.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,  # Crucial for security!
+        samesite="lax",  # Good for CSRF protection
+        secure=False,  # Only send over HTTPS (for production)
+        max_age=security.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+    return {"status": "success", "message": "Login successful"}
+
+@auth_router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Successfully logged out"}
 
 
 @auth_router.post("/forgot-password", status_code=status.HTTP_200_OK)
@@ -913,6 +925,15 @@ def mark_notification_as_read(
     if not notification or notification.recipient_id != current_user.id:
         raise HTTPException(status_code=404, detail="Notification not found")
     crud.mark_notification_as_read(db, notification=notification)
+    return
+
+@notifications_router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
+def mark_all_notifications_as_read(
+        db: Session = Depends(database_manager.get_db),
+        current_user: models.User = Depends(security.get_current_user)
+):
+    """Marks all of the current user's notifications as read."""
+    crud.mark_all_notifications_as_read_for_user(db, user_id=current_user.id)
     return
 
 

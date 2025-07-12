@@ -399,6 +399,15 @@ def mark_notification_as_read(db: Session, notification: models.Notification):
     db.commit()
     return notification
 
+def mark_all_notifications_as_read_for_user(db: Session, user_id: int):
+    """Marks all unread notifications for a specific user as read."""
+    db.query(models.Notification).filter(
+        models.Notification.recipient_id == user_id,
+        models.Notification.is_read == False
+    ).update({"is_read": True}, synchronize_session=False)
+    db.commit()
+    return
+
 
 # --- NEW REPORTING AND ADMIN CRUD FUNCTIONS ---
 

@@ -8,20 +8,21 @@ const apiService = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true,
 });
 
-// Request Interceptor: Add the JWT token to every outgoing request
-apiService.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+// // Request Interceptor: Add the JWT token to every outgoing request
+// apiService.interceptors.request.use(
+//     (config) => {
+//         const token = localStorage.getItem('accessToken');
+//         if (token) {
+//             config.headers.Authorization = `Bearer ${token}`;
+//         }
+//         return config;
+//     },
+//     (error) => {
+//         return Promise.reject(error);
+//     }
+// );
 
 export default apiService;

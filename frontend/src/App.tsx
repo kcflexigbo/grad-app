@@ -49,17 +49,16 @@ const AppLayout = () => {
     const { isLoggedIn } = useAuth();
     const [isSocketActive, setIsSocketActive] = useState(true);
 
-    const { data: notificationsResponse } = useQuery({
+    const { data: notifications } = useQuery({
         queryKey: ['notifications'],
-        queryFn: () => apiService.get<NotificationType[]>('/notifications'),
+        queryFn: async () => (await apiService.get<NotificationType[]>('/notifications')).data,
         enabled: isLoggedIn,
         staleTime: 1000 * 60, // 1 minute
     });
 
-    const unreadCount = notificationsResponse?.data?.filter(n => !n.is_read).length ?? 0;
+    const unreadCount = notifications?.filter(n => !n.is_read).length ?? 0;
 
-    const token = localStorage.getItem('accessToken');
-    const wsUrl = isLoggedIn && isSocketActive ? `${WS_URL}/ws/notifications?token=${token}` : null;
+    const wsUrl = isLoggedIn && isSocketActive ? `${WS_URL}/ws/notifications` : null;
     const { lastMessage } = useWebSocket<NotificationType>(wsUrl);
 
     useEffect(() => {

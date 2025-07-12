@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -60,7 +60,7 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[mod
     return user
 
 
-def get_current_user(token: str = Depends(oauth2_scheme),
+def get_current_user(access_token: Optional[str] = Cookie(None),
                      db: Session = Depends(database_manager.get_db)) -> models.User:
     """
     Dependency to get the current user from a JWT token.
@@ -71,8 +71,11 @@ def get_current_user(token: str = Depends(oauth2_scheme),
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if access_token is None:
+        raise credentials_exception
+        # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -85,16 +88,16 @@ def get_current_user(token: str = Depends(oauth2_scheme),
         raise credentials_exception
     return user
 
-def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme),
+def get_optional_current_user(access_token: Optional[str] = Depends(oauth2_scheme),
                               db: Session = Depends(database_manager.get_db)) -> Optional[models.User]:
     """
         Dependency to get the current user from a JWT token if present.
         If the token is missing or invalid, it returns None instead of raising an exception.
     """
-    if token is None:
+    if access_token is None:
         return None
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             return None

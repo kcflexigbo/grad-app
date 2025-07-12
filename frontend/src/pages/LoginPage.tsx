@@ -20,10 +20,10 @@ const LoginPage = () => {
             formData.append('username', username);
             formData.append('password', password);
 
-            const response = await apiService.post('/auth/token', formData, {
+            await apiService.post('/auth/token', formData, {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             });
-            login(response.data.access_token);
+            login();
         } catch (err: any) {
             if (err.response && err.response.data && err.response.data.detail) {
                 setError(err.response.data.detail);
