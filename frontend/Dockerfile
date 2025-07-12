@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY package.json ./
 COPY package-lock.json ./
-COPY .env.production ./
+COPY .env.development ./
 
 RUN npm install
 
